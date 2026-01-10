@@ -1,15 +1,33 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // Supabaseクライアント読み込み
+
+// 【重要】ローカル環境（VS Code）で使う際は、以下の行のコメントアウト(//)を外してください
+// import { supabase } from '@/lib/supabaseClient';
+
+// 【重要】ローカル環境では、以下のダミー変数 supabase の定義をすべて削除してください
+// --- プレビュー用ダミーSupabaseクライアント (ここから) ---
+// これがないとプレビュー環境でエラーになりますが、本番環境では不要です
+const supabase = {
+  from: (table: string) => ({
+    select: (columns?: string) => ({
+      order: (column: string, options?: { ascending?: boolean }) => Promise.resolve({ data: [], error: null })
+    }),
+    insert: (data: any) => Promise.resolve({ error: null }),
+    delete: () => ({ eq: (column: string, value: any) => Promise.resolve({ error: null }) })
+  })
+};
+// --- プレビュー用ダミーSupabaseクライアント (ここまで) ---
+
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
   Settings, Calendar as CalendarIcon, Dumbbell, Plus, Trash2,
-  Activity, BarChart3, X, Save, Target, ChevronLeft, ChevronRight, Clock, Layers
+  Activity, X, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
-// --- 背景画像の定数 (変更済み: Gray concrete floor by František G.) ---
-const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1575727137976-92c206b006a9?q=80&w=2564&auto=format&fit=crop";
+// --- 背景画像の定数 ---
+// publicフォルダに配置した画像を参照
+const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
 
 // --- 型定義 ---
 
@@ -23,7 +41,7 @@ interface LogData {
   id?: number | string;
   date: string;
   totalSets: number | string;
-  total_sets?: number | string; 
+  total_sets?: number | string; // DBのカラム名揺らぎ対応
   items: LogItem[];
   fatigue_data?: any;
 }
@@ -31,13 +49,20 @@ interface LogData {
 interface LogDetailModalProps {
   log: LogData | null;
   onClose: () => void;
+  onDelete: (id: number | string) => void;
 }
 
-// --- コンポーネント: 詳細表示モーダル (赤テーマ) ---
-const LogDetailModal = ({ log, onClose }: LogDetailModalProps) => {
+// --- コンポーネント: 詳細表示モーダル (削除機能付き) ---
+const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
   if (!log) return null;
 
   const displayTotalSets = log.total_sets || log.totalSets || 0;
+
+  const handleDeleteClick = () => {
+    if (log.id) {
+      onDelete(log.id);
+    }
+  };
 
   return (
     <div 
@@ -56,12 +81,23 @@ const LogDetailModal = ({ log, onClose }: LogDetailModalProps) => {
               {log.date}
             </h3>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors text-neutral-500"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex gap-2">
+            {/* 削除ボタン */}
+            <button 
+              onClick={handleDeleteClick}
+              className="p-2 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
+              title="このログを削除"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+            {/* 閉じるボタン */}
+            <button 
+              onClick={onClose}
+              className="p-2 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors text-neutral-500"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* サマリー */}
@@ -113,48 +149,71 @@ const LogDetailModal = ({ log, onClose }: LogDetailModalProps) => {
   );
 };
 
-// --- コンポーネント: 疲労度入力モーダル (赤テーマ) ---
+// --- コンポーネント: 疲労度入力モーダル (挙動修正版) ---
 const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
   const [value, setValue] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const ITEM_HEIGHT = 64; // h-16 = 64px (高さを広げて押しやすく)
 
+  // モーダルが開いた時に初期位置へスクロール
   useEffect(() => {
     if (isOpen && scrollRef.current) {
-      const el = scrollRef.current;
-      el.scrollTop = (5 - 1) * 40; 
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            top: (value - 1) * ITEM_HEIGHT,
+            behavior: 'auto'
+          });
+        }
+      }, 50); // 描画待ち
     }
   }, [isOpen]);
+
+  // 値を選択した時の処理
+  const handleSelect = (level: number) => {
+    setValue(level);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: (level - 1) * ITEM_HEIGHT,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
   const levels = Array.from({ length: 10 }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-neutral-900/90 border border-red-500/20 w-full max-w-xs rounded-3xl p-6 shadow-[0_0_50px_rgba(220,38,38,0.2)] relative overflow-hidden">
-        {/* 背景エフェクト */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-neutral-900 border border-red-500/30 w-full max-w-xs rounded-3xl p-6 shadow-[0_0_50px_rgba(220,38,38,0.3)] relative overflow-hidden">
+        
         <h3 className="text-center text-white font-bold text-lg mb-1">{exerciseName}</h3>
         <p className="text-center text-red-400 text-xs font-bold tracking-widest mb-6">FATIGUE LEVEL</p>
 
-        <div className="relative h-48 mb-6 group">
-          <div className="absolute top-1/2 left-0 right-0 h-12 -mt-6 bg-red-500/10 border-y border-red-500/30 pointer-events-none z-10"></div>
+        <div className="relative h-64 mb-6 group">
+          {/* 中央の選択ハイライトバー */}
+          <div className="absolute top-1/2 left-0 right-0 h-16 -mt-8 bg-gradient-to-r from-red-600/20 via-red-600/10 to-red-600/20 border-y border-red-500/50 pointer-events-none z-10 rounded-lg backdrop-blur-sm"></div>
           
           <div 
             ref={scrollRef}
-            className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide py-[calc(50%-24px)]"
+            className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide py-[calc(50%-32px)]"
           >
             {levels.map((level) => (
               <div 
                 key={level}
-                onClick={() => setValue(level)}
+                onClick={() => handleSelect(level)}
                 className={`
-                  h-12 flex items-center justify-center snap-center cursor-pointer transition-all duration-200
-                  ${value === level ? 'text-3xl font-black text-white scale-110 drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'text-xl text-neutral-500 font-bold'}
+                  h-16 flex items-center justify-center snap-center cursor-pointer transition-all duration-300
+                  ${value === level ? 'scale-110' : 'opacity-40 scale-90'}
                 `}
               >
-                {level}
+                <span className={`
+                  text-4xl font-black transition-colors duration-300
+                  ${value === level ? 'text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 'text-neutral-500'}
+                `}>
+                  {level}
+                </span>
               </div>
             ))}
           </div>
@@ -163,15 +222,15 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
         <div className="flex gap-3">
           <button 
             onClick={onClose}
-            className="flex-1 py-3 bg-neutral-800 text-neutral-400 font-bold text-xs rounded-xl hover:bg-neutral-700 transition-colors border border-white/5"
+            className="flex-1 py-3.5 bg-neutral-800 text-neutral-400 font-bold text-sm rounded-2xl hover:bg-neutral-700 transition-colors border border-white/5"
           >
-            キャンセル
+            後で
           </button>
           <button 
             onClick={() => onSave(value)}
-            className="flex-1 py-3 bg-red-600 text-white font-bold text-xs rounded-xl hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all active:scale-95"
+            className="flex-1 py-3.5 bg-red-600 text-white font-bold text-sm rounded-2xl hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all active:scale-95"
           >
-            記録する
+            決定
           </button>
         </div>
       </div>
@@ -223,7 +282,7 @@ const DeleteButton = ({ onDelete, mode = 'dark' }: any) => {
   );
 };
 
-// --- コンポーネント: スライダー入力 (赤テーマ) ---
+// --- コンポーネント: スライダー入力 (重量は5kg刻みに変更) ---
 const SliderInput = ({ label, value, onChange, min, max, step, unit, mode = 'dark' }: any) => {
   const numericValue = parseFloat(value) || 0;
 
@@ -249,7 +308,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit, mode = 'dar
           type="range"
           min={min}
           max={max}
-          step={step}
+          step={step} // ここで刻み幅を設定
           value={numericValue}
           onChange={handleChange}
           className={`
@@ -264,7 +323,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit, mode = 'dar
   );
 };
 
-// --- コンポーネント: カレンダービュー (赤テーマ) ---
+// --- コンポーネント: カレンダービュー ---
 const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
@@ -294,6 +353,28 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
     return history.find((log: any) => log.date === dateStr);
   };
 
+  // ログ削除処理
+  const handleDeleteLog = async (id: number | string) => {
+    if (!confirm('本当にこのログを削除しますか？\n（この操作は取り消せません）')) return;
+
+    try {
+      const { error } = await supabase
+        .from('workout_logs')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      alert('削除しました');
+      setSelectedLog(null);
+      // Supabaseの変更を反映させるためにリロード
+      window.location.reload(); 
+    } catch (error) {
+      console.error('Error deleting log:', error);
+      alert('削除に失敗しました');
+    }
+  };
+
   const weeklyCount = history.length > 0 ? history.length : 0; 
   
   let paceMessage = "まずは週1回から始めましょう。";
@@ -307,7 +388,8 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
     <div className="pb-36 pt-24 animate-in fade-in duration-500 min-h-screen">
       <LogDetailModal 
         log={selectedLog} 
-        onClose={() => setSelectedLog(null)} 
+        onClose={() => setSelectedLog(null)}
+        onDelete={handleDeleteLog}
       />
 
       <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
@@ -453,29 +535,40 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
   const [activeModalId, setActiveModalId] = useState<number | null>(null);
 
   const toggleSet = (exerciseId: number, setIndex: number) => {
-    let justCompletedExercise = false;
+    // 状態更新ロジック
     const newWorkouts = workouts.map((workout: any) => {
       if (workout.id === exerciseId) {
         const newSets = [...workout.sets];
+        // 完了状態を反転
         newSets[setIndex].completed = !newSets[setIndex].completed;
-        const allCompleted = newSets.every((s: any) => s.completed);
-        const wasAllCompleted = workout.sets.every((s: any) => s.completed);
-        if (allCompleted && !wasAllCompleted && !fatigueData[exerciseId]) {
-          justCompletedExercise = true;
-        }
         return { ...workout, sets: newSets };
       }
       return workout;
     });
+    
     setWorkouts(newWorkouts);
-    if (justCompletedExercise) {
-      setTimeout(() => setActiveModalId(exerciseId), 500);
+
+    // 更新後の状態で全セット完了判定を行う
+    const updatedWorkout = newWorkouts.find((w: any) => w.id === exerciseId);
+    if (updatedWorkout) {
+      const allCompleted = updatedWorkout.sets.every((s: any) => s.completed);
+      const isFatigueRecorded = !!fatigueData[exerciseId];
+
+      // 「全セット完了」かつ「まだ疲労度が未入力」の場合のみモーダルを開く
+      // 0.5秒遅延させて、チェックのアニメーションを見せてから開く
+      if (allCompleted && !isFatigueRecorded) {
+        setTimeout(() => {
+          setActiveModalId(exerciseId);
+        }, 500);
+      }
     }
   };
 
   const handleSaveFatigue = (value: number) => {
-    setFatigueData((prev: any) => ({ ...prev, [activeModalId!]: value }));
-    setActiveModalId(null);
+    if (activeModalId) {
+      setFatigueData((prev: any) => ({ ...prev, [activeModalId]: value }));
+      setActiveModalId(null);
+    }
   };
 
   const toggleExpand = (id: number) => {
@@ -557,13 +650,10 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
                   : 'shadow-2xl shadow-black/50 hover:shadow-black/30'}
               `}
             >
-              <div className="absolute inset-0 z-0 bg-neutral-950">
-                <img 
-                  src={workout.image} 
-                  alt={workout.name} 
-                  className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${isAllDone ? 'opacity-30 grayscale' : 'opacity-80 grayscale-[30%]'}`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/90 via-neutral-900/50 to-transparent" />
+              <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl">
+                {/* 背景: 画像をやめて赤黒グラデーションに統一 */}
+                <div className="absolute inset-0 bg-gradient-to-br from-red-950 via-neutral-950 to-black" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-600/20 via-transparent to-transparent opacity-70" />
               </div>
 
               <div className={`relative z-10 border rounded-3xl backdrop-blur-[0px] transition-all duration-500 ${isAllDone ? 'border-white/5 bg-neutral-900/60' : 'border-white/10'}`}>
@@ -661,7 +751,7 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
     const newId = Date.now();
     const newExercise = {
       id: newId, name: '新規種目', part: '部位',
-      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80',
+      image: '', 
       sets: [{ id: `${newId}-1`, weight: '20kg', reps: '10回', completed: false }]
     };
     setWorkouts([...workouts, newExercise]);
@@ -754,7 +844,8 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
               </div>
 
               <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 space-y-6">
-                <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={100} step={0.25} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
+                {/* 重量スライダー：ステップを5に設定 */}
+                <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={5} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
                 <SliderInput label="SETTING REPS (全セット共通)" value={currentReps} unit="回" min={1} max={30} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'reps', val)} mode="light" />
                 <div className="pt-2 border-t border-neutral-200/50">
                    <div className="flex justify-between items-center mb-2">
@@ -785,7 +876,7 @@ export default function App() {
   const initialMenu = [
     { 
       id: 1, name: 'チェストプレス', part: '胸',
-      image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '1-1', weight: '60kg', reps: '10回', completed: false },
         { id: '1-2', weight: '60kg', reps: '10回', completed: false },
@@ -794,7 +885,7 @@ export default function App() {
     },
     { 
       id: 2, name: 'リアデルト', part: '肩 / 背中',
-      image: 'https://images.unsplash.com/photo-1605296867304-46d5465a13f1?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '2-1', weight: '25kg', reps: '10回', completed: false },
         { id: '2-2', weight: '25kg', reps: '10回', completed: false },
@@ -803,7 +894,7 @@ export default function App() {
     },
     { 
       id: 3, name: 'ラットプルダウン', part: '背中',
-      image: 'https://images.unsplash.com/photo-1598289431512-b97b0917affc?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '3-1', weight: '50kg', reps: '10回', completed: false },
         { id: '3-2', weight: '50kg', reps: '10回', completed: false },
@@ -812,7 +903,7 @@ export default function App() {
     },
     { 
       id: 4, name: 'ショルダープレス', part: '肩',
-      image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '4-1', weight: '40kg', reps: '10回', completed: false },
         { id: '4-2', weight: '40kg', reps: '10回', completed: false },
@@ -821,25 +912,25 @@ export default function App() {
     },
     { 
       id: 5, name: 'インクラインDBカール', part: '上腕二頭筋',
-      image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
-        { id: '5-1', weight: '8kg', reps: '10回', completed: false },
-        { id: '5-2', weight: '8kg', reps: '10回', completed: false },
-        { id: '5-3', weight: '8kg', reps: '10回', completed: false },
+        { id: '5-1', weight: '10kg', reps: '10回', completed: false },
+        { id: '5-2', weight: '10kg', reps: '10回', completed: false },
+        { id: '5-3', weight: '10kg', reps: '10回', completed: false },
       ]
     },
     { 
       id: 6, name: 'ライイングトライセプスExt', part: '上腕三頭筋',
-      image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
-        { id: '6-1', weight: '1.25kg', reps: '10回', completed: false },
-        { id: '6-2', weight: '1.25kg', reps: '10回', completed: false },
-        { id: '6-3', weight: '1.25kg', reps: '10回', completed: false },
+        { id: '6-1', weight: '20kg', reps: '10回', completed: false },
+        { id: '6-2', weight: '20kg', reps: '10回', completed: false },
+        { id: '6-3', weight: '20kg', reps: '10回', completed: false },
       ]
     },
     { 
       id: 7, name: 'ロータリートーソ', part: '体幹',
-      image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '7-1', weight: '30kg', reps: '10回', completed: false },
         { id: '7-2', weight: '30kg', reps: '10回', completed: false },
@@ -848,16 +939,16 @@ export default function App() {
     },
     { 
       id: 8, name: 'レッグプレス', part: '脚',
-      image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
-        { id: '8-1', weight: '79kg', reps: '10回', completed: false },
-        { id: '8-2', weight: '79kg', reps: '10回', completed: false },
-        { id: '8-3', weight: '79kg', reps: '10回', completed: false },
+        { id: '8-1', weight: '80kg', reps: '10回', completed: false },
+        { id: '8-2', weight: '80kg', reps: '10回', completed: false },
+        { id: '8-3', weight: '80kg', reps: '10回', completed: false },
       ]
     },
     { 
       id: 9, name: '腹筋', part: '腹筋',
-      image: 'https://images.unsplash.com/photo-1554344728-77cf90d9ed26?auto=format&fit=crop&w=800&q=80',
+      image: '',
       sets: [
         { id: '9-1', weight: '5kg', reps: '10回', completed: false },
         { id: '9-2', weight: '5kg', reps: '10回', completed: false },
