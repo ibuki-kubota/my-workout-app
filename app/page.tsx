@@ -1003,7 +1003,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen font-sans selection:bg-red-500 selection:text-white relative text-white bg-neutral-950">
+    <div className="min-h-screen font-sans selection:bg-red-500 selection:text-white relative text-white">
       <div 
         className="fixed inset-0 z-[-1]"
         style={{
