@@ -2,22 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-// 【重要】ローカル環境（VS Code）で使う際は、以下の行のコメントアウト(//)を外してください
-// import { supabase } from '@/lib/supabaseClient';
-
-// 【重要】ローカル環境では、以下のダミー変数 supabase の定義をすべて削除してください
-// --- プレビュー用ダミーSupabaseクライアント (ここから) ---
-// これがないとプレビュー環境でエラーになりますが、本番環境では不要です
-const supabase = {
-  from: (table: string) => ({
-    select: (columns?: string) => ({
-      order: (column: string, options?: { ascending?: boolean }) => Promise.resolve({ data: [], error: null })
-    }),
-    insert: (data: any) => Promise.resolve({ error: null }),
-    delete: () => ({ eq: (column: string, value: any) => Promise.resolve({ error: null }) })
-  })
-};
-// --- プレビュー用ダミーSupabaseクライアント (ここまで) ---
+// 【修正】Supabaseクライアントを有効化しました
+import { supabase } from '@/lib/supabaseClient';
 
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
