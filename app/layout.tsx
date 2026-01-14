@@ -2,11 +2,11 @@ import type { Metadata, Viewport } from "next";
 
 // 【重要: コピペ後の作業】
 // VS Codeに貼り付けた後、以下の2行の先頭にある「// 」を消して有効にしてください
-// import { Inter } from "next/font/google";
-// import "./globals.css";
+import { Inter } from "next/font/google";
+import "./globals.css";
 
 // ↓この行もコメントアウトを外してください
-// const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
   themeColor: "#000000",
