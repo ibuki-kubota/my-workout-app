@@ -2,18 +2,33 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-// 【修正】Supabaseクライアントを有効化しました
-import { supabase } from '@/lib/supabaseClient';
+// 【重要: コピペ後の作業】
+// VS Codeに貼り付けた後、↓の行の先頭にある「// 」を消して有効にしてください！
+// import { supabase } from '@/lib/supabaseClient';
+
+// --- 以下はプレビュー用ダミー (VS Codeで上記を有効にしたら、このブロックは削除または無視してOKです) ---
+const supabaseDummy = {
+  from: () => ({
+    select: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
+    insert: () => Promise.resolve({ error: null }),
+    delete: () => ({ eq: () => Promise.resolve({ error: null }) })
+  })
+};
+const getSupabase = () => {
+  // @ts-ignore
+  if (typeof supabase !== 'undefined') return supabase;
+  return supabaseDummy;
+};
+// -----------------------------------------------------------------------------
 
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
   Settings, Calendar as CalendarIcon, Dumbbell, Plus, Trash2,
-  Activity, X, ChevronLeft, ChevronRight
+  Activity, X, ChevronLeft, ChevronRight, Edit3
 } from 'lucide-react';
 
-// --- 背景画像の定数 ---
-// publicフォルダに配置した画像を参照
-const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
+// --- 背景画像の定数 (青系のジム画像) ---
+const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2564&auto=format&fit=crop";
 
 // --- 型定義 ---
 
@@ -27,7 +42,7 @@ interface LogData {
   id?: number | string;
   date: string;
   totalSets: number | string;
-  total_sets?: number | string; // DBのカラム名揺らぎ対応
+  total_sets?: number | string;
   items: LogItem[];
   fatigue_data?: any;
 }
@@ -38,7 +53,7 @@ interface LogDetailModalProps {
   onDelete: (id: number | string) => void;
 }
 
-// --- コンポーネント: 詳細表示モーダル (削除機能付き) ---
+// --- コンポーネント: 詳細表示モーダル (青テーマ) ---
 const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
   if (!log) return null;
 
@@ -52,34 +67,32 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
 
   return (
     <div 
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div 
-        className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-4 zoom-in-95 duration-300"
+        className="bg-neutral-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl shadow-blue-900/20 relative overflow-hidden animate-in slide-in-from-bottom-4 zoom-in-95 duration-300 border border-blue-500/20"
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="flex justify-between items-start mb-6 border-b border-neutral-100 pb-4">
+        <div className="flex justify-between items-start mb-6 border-b border-neutral-800 pb-4">
           <div>
-            <p className="text-xs font-bold text-neutral-400 tracking-widest mb-1">WORKOUT DETAIL</p>
-            <h3 className="text-2xl font-black text-neutral-800 flex items-center gap-2">
+            <p className="text-xs font-bold text-blue-400 tracking-widest mb-1">WORKOUT DETAIL</p>
+            <h3 className="text-2xl font-black text-white flex items-center gap-2">
               {log.date}
             </h3>
           </div>
           <div className="flex gap-2">
-            {/* 削除ボタン */}
             <button 
               onClick={handleDeleteClick}
-              className="p-2 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"
+              className="p-2 bg-neutral-800 text-red-400 rounded-full hover:bg-red-900/30 transition-colors border border-neutral-700"
               title="このログを削除"
             >
               <Trash2 className="w-5 h-5" />
             </button>
-            {/* 閉じるボタン */}
             <button 
               onClick={onClose}
-              className="p-2 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors text-neutral-500"
+              className="p-2 bg-neutral-800 text-neutral-400 rounded-full hover:bg-neutral-700 transition-colors border border-neutral-700"
             >
               <X className="w-5 h-5" />
             </button>
@@ -88,43 +101,42 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
 
         {/* サマリー */}
         <div className="flex gap-4 mb-6">
-          <div className="flex-1 bg-red-50 rounded-2xl p-4 border border-red-100">
-            <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">TOTAL SETS</p>
-            <p className="text-2xl font-black text-red-600">{displayTotalSets}</p>
+          <div className="flex-1 bg-blue-950/30 rounded-2xl p-4 border border-blue-500/30">
+            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">TOTAL SETS</p>
+            <p className="text-2xl font-black text-blue-500">{displayTotalSets}</p>
           </div>
-          <div className="flex-1 bg-neutral-50 rounded-2xl p-4 border border-neutral-100">
+          <div className="flex-1 bg-neutral-800/50 rounded-2xl p-4 border border-neutral-700">
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1">EXERCISES</p>
-            <p className="text-2xl font-black text-neutral-700">{log.items.length}</p>
+            <p className="text-2xl font-black text-white">{log.items.length}</p>
           </div>
         </div>
 
         {/* 詳細リスト */}
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
           {log.items.map((item, idx) => (
-            <div key={idx} className="bg-white border border-neutral-100 rounded-2xl p-4 shadow-sm flex justify-between items-center">
+            <div key={idx} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-sm flex justify-between items-center">
               <div>
-                <h4 className="font-bold text-neutral-800 text-sm mb-1">{item.name}</h4>
+                <h4 className="font-bold text-white text-sm mb-1">{item.name}</h4>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-neutral-500 font-mono bg-neutral-100 px-2 py-0.5 rounded">
+                  <span className="text-xs text-blue-300 font-mono bg-blue-950/50 px-2 py-0.5 rounded border border-blue-500/20">
                     {item.completedSets} sets
                   </span>
                 </div>
               </div>
               
-              {/* 疲労度表示 */}
               <div className="flex flex-col items-end">
-                <span className="text-[9px] font-bold text-neutral-400 uppercase mb-0.5">FATIGUE</span>
+                <span className="text-[9px] font-bold text-neutral-500 uppercase mb-0.5">FATIGUE</span>
                 {item.fatigue ? (
                   <div className={`
                     w-8 h-8 rounded-full flex items-center justify-center font-black text-sm border-2
-                    ${item.fatigue >= 8 ? 'bg-red-50 border-red-200 text-red-500' : 
-                      item.fatigue >= 5 ? 'bg-orange-50 border-orange-200 text-orange-600' : 
-                      'bg-neutral-50 border-neutral-200 text-neutral-500'}
+                    ${item.fatigue >= 8 ? 'bg-red-950/30 border-red-500 text-red-500' : 
+                      item.fatigue >= 5 ? 'bg-yellow-950/30 border-yellow-500 text-yellow-500' : 
+                      'bg-blue-950/30 border-blue-500 text-blue-500'}
                   `}>
                     {item.fatigue}
                   </div>
                 ) : (
-                  <span className="text-xs text-neutral-300 font-bold">-</span>
+                  <span className="text-xs text-neutral-600 font-bold">-</span>
                 )}
               </div>
             </div>
@@ -135,72 +147,65 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
   );
 };
 
-// --- コンポーネント: 疲労度入力モーダル (挙動修正版) ---
+// --- コンポーネント: 疲労度入力モーダル (横スクロール版) ---
 const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
   const [value, setValue] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const ITEM_HEIGHT = 64; // h-16 = 64px (高さを広げて押しやすく)
 
-  // モーダルが開いた時に初期位置へスクロール
+  // モーダルが開いた時に中央付近へスクロール
   useEffect(() => {
     if (isOpen && scrollRef.current) {
       setTimeout(() => {
         if (scrollRef.current) {
-          scrollRef.current.scrollTo({
-            top: (value - 1) * ITEM_HEIGHT,
-            behavior: 'auto'
-          });
+          // 初期位置調整（簡易的）
+          const el = scrollRef.current;
+          el.scrollLeft = (value - 1) * 60; 
         }
-      }, 50); // 描画待ち
+      }, 50);
     }
   }, [isOpen]);
-
-  // 値を選択した時の処理
-  const handleSelect = (level: number) => {
-    setValue(level);
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: (level - 1) * ITEM_HEIGHT,
-        behavior: 'smooth'
-      });
-    }
-  };
 
   if (!isOpen) return null;
 
   const levels = Array.from({ length: 10 }, (_, i) => i + 1);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-neutral-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-neutral-900 border border-red-500/30 w-full max-w-xs rounded-3xl p-6 shadow-[0_0_50px_rgba(220,38,38,0.3)] relative overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-neutral-900 border border-blue-500/30 w-full max-w-sm rounded-3xl p-6 shadow-[0_0_50px_rgba(59,130,246,0.2)] relative overflow-hidden">
         
         <h3 className="text-center text-white font-bold text-lg mb-1">{exerciseName}</h3>
-        <p className="text-center text-red-400 text-xs font-bold tracking-widest mb-6">FATIGUE LEVEL</p>
+        <p className="text-center text-blue-400 text-xs font-bold tracking-widest mb-8">FATIGUE LEVEL (横スクロール)</p>
 
-        <div className="relative h-64 mb-6 group">
-          {/* 中央の選択ハイライトバー */}
-          <div className="absolute top-1/2 left-0 right-0 h-16 -mt-8 bg-gradient-to-r from-red-600/20 via-red-600/10 to-red-600/20 border-y border-red-500/50 pointer-events-none z-10 rounded-lg backdrop-blur-sm"></div>
-          
+        <div className="relative mb-8 group">
           <div 
             ref={scrollRef}
-            className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide py-[calc(50%-32px)]"
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 px-[40%]"
+            style={{ scrollbarWidth: 'none' }}
           >
             {levels.map((level) => (
               <div 
                 key={level}
-                onClick={() => handleSelect(level)}
+                onClick={() => setValue(level)}
                 className={`
-                  h-16 flex items-center justify-center snap-center cursor-pointer transition-all duration-300
-                  ${value === level ? 'scale-110' : 'opacity-40 scale-90'}
+                  flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center snap-center cursor-pointer transition-all duration-300 border-2
+                  ${value === level 
+                    ? 'bg-blue-600 border-blue-400 scale-110 shadow-[0_0_20px_rgba(37,99,235,0.6)] z-10' 
+                    : 'bg-neutral-800 border-neutral-700 opacity-60 scale-90'}
                 `}
               >
                 <span className={`
-                  text-4xl font-black transition-colors duration-300
-                  ${value === level ? 'text-white drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]' : 'text-neutral-500'}
+                  text-2xl font-black transition-colors duration-300
+                  ${value === level ? 'text-white' : 'text-neutral-400'}
                 `}>
                   {level}
                 </span>
               </div>
+            ))}
+          </div>
+          {/* インジケータ */}
+          <div className="flex justify-center gap-1 mt-2">
+            {levels.map(l => (
+              <div key={l} className={`w-1 h-1 rounded-full transition-colors ${value === l ? 'bg-blue-500' : 'bg-neutral-800'}`} />
             ))}
           </div>
         </div>
@@ -214,7 +219,7 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
           </button>
           <button 
             onClick={() => onSave(value)}
-            className="flex-1 py-3.5 bg-red-600 text-white font-bold text-sm rounded-2xl hover:bg-red-500 shadow-lg shadow-red-600/30 transition-all active:scale-95"
+            className="flex-1 py-3.5 bg-blue-600 text-white font-bold text-sm rounded-2xl hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
           >
             決定
           </button>
@@ -225,7 +230,7 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
 };
 
 // --- コンポーネント: 削除ボタン ---
-const DeleteButton = ({ onDelete, mode = 'dark' }: any) => {
+const DeleteButton = ({ onDelete }: any) => {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
@@ -250,69 +255,78 @@ const DeleteButton = ({ onDelete, mode = 'dark' }: any) => {
     );
   }
 
-  const baseClass = "p-2 rounded-lg transition-all active:scale-90 duration-200 border";
-  const themeClass = mode === 'light' 
-    ? "text-neutral-400 hover:text-red-500 bg-neutral-100 hover:bg-red-50 border-neutral-200"
-    : "text-neutral-400 hover:text-white bg-neutral-800/40 hover:bg-red-900/40 border-white/10";
-
   return (
     <button 
       onClick={(e) => {
         e.stopPropagation();
         setConfirming(true);
       }}
-      className={`${baseClass} ${themeClass}`}
+      className="p-2 rounded-lg transition-all active:scale-90 duration-200 border text-neutral-400 hover:text-white bg-neutral-800/40 hover:bg-red-900/40 border-white/10"
     >
       <Trash2 className="w-5 h-5" />
     </button>
   );
 };
 
-// --- コンポーネント: スライダー入力 (重量は5kg刻みに変更) ---
-const SliderInput = ({ label, value, onChange, min, max, step, unit, mode = 'dark' }: any) => {
+// --- コンポーネント: スライダー＋数値入力 (手打ち対応) ---
+const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   const numericValue = parseFloat(value) || 0;
 
   const handleChange = (e: any) => {
-    const newValue = e.target.value;
-    onChange(`${newValue}${unit}`);
+    let val = e.target.value;
+    // 数値入力で空の場合は0扱いなどにせずそのまま渡して操作性を良くする
+    onChange(`${val}${unit}`);
   };
 
-  const isLight = mode === 'light';
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    onChange(`${val}${unit}`);
+  };
 
   return (
     <div className="w-full group">
       <div className="flex justify-between items-end mb-2">
-        <span className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${isLight ? 'text-neutral-500 group-hover:text-red-600' : 'text-neutral-400 group-hover:text-white'}`}>
+        <span className="text-[10px] uppercase tracking-wider font-bold transition-colors text-neutral-400 group-hover:text-blue-400">
           {label}
         </span>
-        <span className={`text-base font-bold font-mono tracking-tight transition-colors drop-shadow-sm ${isLight ? 'text-neutral-900 group-hover:text-red-600' : 'text-white group-hover:text-red-400'}`}>
-          {numericValue}<span className={`text-xs ml-0.5 ${isLight ? 'text-neutral-400' : 'text-neutral-500'}`}>{unit}</span>
-        </span>
       </div>
-      <div className="relative h-6 flex items-center">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step} // ここで刻み幅を設定
-          value={numericValue}
-          onChange={handleChange}
-          className={`
-            w-full h-2 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 transition-all border
-            ${isLight 
-              ? 'bg-neutral-200 accent-red-600 focus:ring-red-500/30 hover:accent-red-500 border-neutral-300' 
-              : 'bg-neutral-800 accent-red-500 focus:ring-red-500/30 hover:accent-red-400 border-white/10'}
-          `}
-        />
+      <div className="flex items-center gap-4">
+        {/* スライダー */}
+        <div className="relative h-6 flex-1 flex items-center">
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={numericValue}
+            onChange={handleChange}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 transition-all border bg-neutral-800 accent-blue-500 focus:ring-blue-500/30 hover:accent-blue-400 border-white/10"
+          />
+        </div>
+        
+        {/* 手打ち入力エリア */}
+        <div className="flex items-center bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 w-24">
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step} // ステップも適用
+            value={numericValue}
+            onChange={handleNumberChange}
+            className="w-full bg-transparent text-right text-lg font-bold font-mono text-white focus:outline-none"
+          />
+          <span className="text-xs ml-1 text-neutral-500">{unit}</span>
+        </div>
       </div>
     </div>
   );
 };
 
-// --- コンポーネント: カレンダービュー ---
+// --- コンポーネント: カレンダービュー (青テーマ) ---
 const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
+  const sb = getSupabase();
 
   const changeMonth = (offset: number) => {
     const newDate = new Date(currentDate.setMonth(currentDate.getMonth() + offset));
@@ -339,12 +353,11 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
     return history.find((log: any) => log.date === dateStr);
   };
 
-  // ログ削除処理
   const handleDeleteLog = async (id: number | string) => {
     if (!confirm('本当にこのログを削除しますか？\n（この操作は取り消せません）')) return;
 
     try {
-      const { error } = await supabase
+      const { error } = await sb
         .from('workout_logs')
         .delete()
         .eq('id', id);
@@ -353,11 +366,10 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
 
       alert('削除しました');
       setSelectedLog(null);
-      // Supabaseの変更を反映させるためにリロード
       window.location.reload(); 
     } catch (error) {
       console.error('Error deleting log:', error);
-      alert('削除に失敗しました');
+      alert('削除に失敗しました（プレビュー環境では動作しません）');
     }
   };
 
@@ -378,33 +390,32 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
         onDelete={handleDeleteLog}
       />
 
-      <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+      <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-black/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
         <h2 className="text-xl font-black text-white tracking-tight drop-shadow-xl flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-red-500" />
+          <CalendarIcon className="w-5 h-5 text-blue-500" />
           LOG & GOAL
         </h2>
       </header>
       
       <div className="max-w-md mx-auto px-5 space-y-6 pt-4">
-        
         {/* 目標設定エリア */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-[10px] font-bold text-red-500 tracking-widest mb-1">WEEKLY GOAL</p>
-              <h3 className="text-neutral-800 font-bold text-lg">今週の目標設定</h3>
+              <p className="text-[10px] font-bold text-blue-500 tracking-widest mb-1">WEEKLY GOAL</p>
+              <h3 className="text-white font-bold text-lg">今週の目標設定</h3>
             </div>
-            <div className="flex items-center gap-3 bg-neutral-50 px-3 py-1.5 rounded-full border border-neutral-200">
+            <div className="flex items-center gap-3 bg-neutral-800 px-3 py-1.5 rounded-full border border-neutral-700">
               <button 
                 onClick={() => setTargetFrequency(Math.max(1, targetFrequency - 1))}
-                className="text-neutral-400 hover:text-red-500"
+                className="text-neutral-400 hover:text-blue-500"
               >
                 <ChevronDown className="w-4 h-4" />
               </button>
-              <span className="text-xl font-black text-red-600 font-mono w-4 text-center">{targetFrequency}</span>
+              <span className="text-xl font-black text-blue-500 font-mono w-4 text-center">{targetFrequency}</span>
               <button 
                 onClick={() => setTargetFrequency(Math.min(7, targetFrequency + 1))}
-                className="text-neutral-400 hover:text-red-500"
+                className="text-neutral-400 hover:text-blue-500"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
@@ -415,35 +426,35 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
           <div className="space-y-3">
             <div className="flex justify-between text-xs text-neutral-500">
               <span>現在のペース</span>
-              <span className="text-neutral-800 font-bold">{weeklyCount}回 / 週</span>
+              <span className="text-white font-bold">{weeklyCount}回 / 週</span>
             </div>
-            <div className="w-full h-2 bg-neutral-100 rounded-full overflow-hidden border border-neutral-200">
+            <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
               <div 
-                className={`h-full transition-all duration-500 ${weeklyCount >= targetFrequency ? 'bg-red-500 shadow-md' : 'bg-red-300'}`}
+                className={`h-full transition-all duration-500 ${weeklyCount >= targetFrequency ? 'bg-blue-500 shadow-lg shadow-blue-500/50' : 'bg-blue-900'}`}
                 style={{ width: `${Math.min(100, (weeklyCount / targetFrequency) * 100)}%` }}
               />
             </div>
-            <p className="text-xs text-neutral-500 mt-2 text-center bg-neutral-50 py-2 rounded-lg border border-neutral-100 font-medium">
+            <p className="text-xs text-neutral-400 mt-2 text-center bg-neutral-800/50 py-2 rounded-lg border border-neutral-800 font-medium">
               {paceMessage}
             </p>
           </div>
         </div>
 
         {/* カレンダーエリア */}
-        <div className="bg-white border border-neutral-200 rounded-3xl p-6 shadow-xl">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-6">
-            <button onClick={() => changeMonth(-1)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-full">
+            <button onClick={() => changeMonth(-1)} className="p-2 text-neutral-400 hover:text-blue-500 hover:bg-neutral-800 rounded-full">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h3 className="text-neutral-800 font-bold text-lg tracking-widest">{yearMonthStr}</h3>
-            <button onClick={() => changeMonth(1)} className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-full">
+            <h3 className="text-white font-bold text-lg tracking-widest">{yearMonthStr}</h3>
+            <button onClick={() => changeMonth(1)} className="p-2 text-neutral-400 hover:text-blue-500 hover:bg-neutral-800 rounded-full">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-2 mb-3">
             {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-              <div key={day} className="text-center text-[10px] font-bold text-neutral-400">
+              <div key={day} className="text-center text-[10px] font-bold text-neutral-500">
                 {day}
               </div>
             ))}
@@ -461,16 +472,16 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
                   key={i} 
                   onClick={() => isDone && setSelectedLog(log)}
                   className={`
-                    aspect-square rounded-xl flex items-center justify-center relative text-xs font-bold transition-all cursor-pointer
-                    ${isToday ? 'bg-red-600 text-white shadow-lg' : 'text-neutral-400 hover:bg-neutral-50'}
-                    ${isDone && !isToday ? 'bg-red-50 border border-red-100 text-red-600' : ''}
+                    aspect-square rounded-xl flex items-center justify-center relative text-xs font-bold transition-all cursor-pointer border
+                    ${isToday ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/30' : 'text-neutral-400 hover:bg-neutral-800 border-transparent'}
+                    ${isDone && !isToday ? 'bg-blue-900/20 border-blue-500/50 text-blue-400' : ''}
                   `}
                 >
                   {date.getDate()}
                   {isDone && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center backdrop-blur-sm ${isToday ? 'border-white bg-white/20' : 'border-red-400 bg-red-100/50'}`}>
-                        <Check className={`w-4 h-4 stroke-[3] ${isToday ? 'text-white' : 'text-red-500'}`} />
+                      <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center backdrop-blur-sm ${isToday ? 'border-white bg-white/20' : 'border-blue-400 bg-blue-900/80'}`}>
+                        <Check className={`w-4 h-4 stroke-[3] ${isToday ? 'text-white' : 'text-blue-400'}`} />
                       </div>
                     </div>
                   )}
@@ -482,9 +493,9 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
 
         {/* リスト表示 */}
         <div className="space-y-4">
-          <p className="text-[10px] font-bold text-neutral-300 tracking-widest px-2 drop-shadow-md">RECENT HISTORY</p>
+          <p className="text-[10px] font-bold text-neutral-500 tracking-widest px-2">RECENT HISTORY</p>
           {history.length === 0 && (
-            <div className="text-center py-10 text-white/30">
+            <div className="text-center py-10 text-neutral-600">
               <p className="text-xs">履歴がありません</p>
             </div>
           )}
@@ -492,18 +503,18 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
              <div 
                key={log.id} 
                onClick={() => setSelectedLog(log)}
-               className="bg-white border border-neutral-200 rounded-2xl p-4 flex justify-between items-center shadow-lg cursor-pointer hover:bg-neutral-50 transition-colors"
+               className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex justify-between items-center shadow-lg cursor-pointer hover:bg-neutral-800 transition-colors"
              >
                <div className="flex items-center gap-4">
-                 <div className="bg-red-50 p-2.5 rounded-full border border-red-100">
-                   <Activity className="w-4 h-4 text-red-500" />
+                 <div className="bg-blue-900/30 p-2.5 rounded-full border border-blue-500/30">
+                   <Activity className="w-4 h-4 text-blue-400" />
                  </div>
                  <div>
-                   <p className="text-sm font-bold text-neutral-800">{log.date}</p>
-                   <p className="text-[10px] text-neutral-500">{(log.total_sets || log.totalSets)} sets completed</p>
+                   <p className="text-sm font-bold text-white">{log.date}</p>
+                   <p className="text-[10px] text-neutral-400">{(log.total_sets || log.totalSets)} sets completed</p>
                  </div>
                </div>
-               <div className="px-3 py-1 rounded-full bg-red-50 border border-red-100 text-xs font-mono text-red-600 font-bold">
+               <div className="px-3 py-1 rounded-full bg-blue-900/20 border border-blue-500/20 text-xs font-mono text-blue-400 font-bold">
                  DETAIL
                </div>
              </div>
@@ -515,17 +526,15 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
   );
 };
 
-// --- コンポーネント: トレーニング実行画面 (Home: 赤テーマ) ---
+// --- コンポーネント: トレーニング実行画面 (Home: 青テーマ) ---
 const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueData, targetFrequency }: any) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [activeModalId, setActiveModalId] = useState<number | null>(null);
 
   const toggleSet = (exerciseId: number, setIndex: number) => {
-    // 状態更新ロジック
     const newWorkouts = workouts.map((workout: any) => {
       if (workout.id === exerciseId) {
         const newSets = [...workout.sets];
-        // 完了状態を反転
         newSets[setIndex].completed = !newSets[setIndex].completed;
         return { ...workout, sets: newSets };
       }
@@ -534,14 +543,11 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
     
     setWorkouts(newWorkouts);
 
-    // 更新後の状態で全セット完了判定を行う
     const updatedWorkout = newWorkouts.find((w: any) => w.id === exerciseId);
     if (updatedWorkout) {
       const allCompleted = updatedWorkout.sets.every((s: any) => s.completed);
       const isFatigueRecorded = !!fatigueData[exerciseId];
 
-      // 「全セット完了」かつ「まだ疲労度が未入力」の場合のみモーダルを開く
-      // 0.5秒遅延させて、チェックのアニメーションを見せてから開く
       if (allCompleted && !isFatigueRecorded) {
         setTimeout(() => {
           setActiveModalId(exerciseId);
@@ -575,10 +581,10 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
         exerciseName={activeExerciseName}
       />
 
-      <header className="fixed top-0 left-0 right-0 z-30 bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 shadow-2xl transition-all duration-300">
+      <header className="fixed top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5 shadow-2xl transition-all duration-300">
         <div className="px-6 pt-5 pb-2 flex justify-between items-start">
           <div>
-            <p className="text-[10px] font-bold text-red-500 tracking-[0.2em] mb-1 drop-shadow-md">WORKOUT LOG</p>
+            <p className="text-[10px] font-bold text-blue-500 tracking-[0.2em] mb-1 drop-shadow-md">WORKOUT LOG</p>
             <h1 className="text-2xl font-black text-white tracking-tighter drop-shadow-xl flex items-center gap-2">
               TODAY
             </h1>
@@ -590,7 +596,7 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
               px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider transition-all duration-300 border shadow-lg
               active:scale-95
               ${completedSets > 0 
-                ? 'bg-red-600 border-red-500 text-white shadow-red-500/40 hover:bg-red-500' 
+                ? 'bg-blue-600 border-blue-500 text-white shadow-blue-500/40 hover:bg-blue-500' 
                 : 'bg-neutral-800/50 border-white/5 text-neutral-500 cursor-not-allowed'}
             `}
           >
@@ -599,13 +605,13 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
         </div>
 
         <div className="px-6 pb-4">
-          <div className="flex justify-between text-[10px] font-bold text-neutral-300 mb-2 tracking-widest">
+          <div className="flex justify-between text-[10px] font-bold text-neutral-400 mb-2 tracking-widest">
              <span>PROGRESS</span>
-             <span className={progress === 100 ? "text-red-500" : ""}>{progress}%</span>
+             <span className={progress === 100 ? "text-blue-500" : ""}>{progress}%</span>
           </div>
           <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden border border-white/10">
             <div 
-              className={`h-full shadow-[0_0_15px_rgba(220,38,38,0.5)] transition-all duration-700 ease-out ${progress === 100 ? 'bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.8)]' : 'bg-white'}`}
+              className={`h-full shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-all duration-700 ease-out ${progress === 100 ? 'bg-blue-500 shadow-[0_0_20px_rgba(37,99,235,0.8)]' : 'bg-white'}`}
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -614,10 +620,10 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
 
       <div className="max-w-md mx-auto px-5 space-y-5 mt-4">
         {progress === 100 && (
-          <div className="relative overflow-hidden rounded-3xl bg-neutral-900/60 border border-red-500/30 p-8 text-center animate-in fade-in slide-in-from-bottom-4 backdrop-blur-xl shadow-[0_0_50px_rgba(220,38,38,0.3)]">
-            <Trophy className="w-12 h-12 text-red-500 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(220,38,38,0.8)]" />
+          <div className="relative overflow-hidden rounded-3xl bg-blue-900/20 border border-blue-500/30 p-8 text-center animate-in fade-in slide-in-from-bottom-4 backdrop-blur-xl shadow-[0_0_50px_rgba(37,99,235,0.2)]">
+            <Trophy className="w-12 h-12 text-blue-500 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(37,99,235,0.8)]" />
             <h2 className="text-xl font-bold text-white tracking-widest mb-2">COMPLETE</h2>
-            <p className="text-neutral-300 text-xs">ナイスワーク！燃えるような集中力でした。</p>
+            <p className="text-blue-200 text-xs">ナイスワーク！青い炎のような集中力でした。</p>
           </div>
         )}
 
@@ -637,23 +643,23 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
               `}
             >
               <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl">
-                {/* 背景: 画像をやめて赤黒グラデーションに統一 */}
-                <div className="absolute inset-0 bg-gradient-to-br from-red-950 via-neutral-950 to-black" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-red-600/20 via-transparent to-transparent opacity-70" />
+                {/* 背景: 青黒グラデーション */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-neutral-950 to-black" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent opacity-70" />
               </div>
 
-              <div className={`relative z-10 border rounded-3xl backdrop-blur-[0px] transition-all duration-500 ${isAllDone ? 'border-white/5 bg-neutral-900/60' : 'border-white/10'}`}>
+              <div className={`relative z-10 border rounded-3xl backdrop-blur-[0px] transition-all duration-500 ${isAllDone ? 'border-white/5 bg-black/60' : 'border-white/10'}`}>
                 <div 
                   onClick={() => toggleExpand(workout.id)}
                   className="p-6 flex items-end justify-between cursor-pointer active:scale-[0.99] transition-transform"
                 >
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                       <span className={`text-[10px] font-bold tracking-widest uppercase block drop-shadow-sm ${isAllDone ? 'text-neutral-500' : 'text-red-400'}`}>
+                       <span className={`text-[10px] font-bold tracking-widest uppercase block drop-shadow-sm ${isAllDone ? 'text-neutral-500' : 'text-blue-400'}`}>
                          {workout.part}
                        </span>
                        {fatigue && (
-                         <span className="text-[9px] font-bold bg-red-500/20 text-red-200 px-2 py-0.5 rounded border border-red-500/30">
+                         <span className="text-[9px] font-bold bg-blue-900/50 text-blue-300 px-2 py-0.5 rounded border border-blue-500/30">
                            疲労度: {fatigue}
                          </span>
                        )}
@@ -663,7 +669,7 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
                     </h3>
                   </div>
                   <div className="flex items-center gap-2">
-                    {isAllDone && <Check className="w-6 h-6 text-red-500 animate-in zoom-in drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]" />}
+                    {isAllDone && <Check className="w-6 h-6 text-blue-500 animate-in zoom-in drop-shadow-[0_0_10px_rgba(37,99,235,0.8)]" />}
                     {isExpanded 
                       ? <div className="p-2 rounded-full bg-neutral-800/50 border border-white/10"><ChevronUp className="w-4 h-4 text-neutral-300" /></div>
                       : <div className="p-2 rounded-full bg-neutral-800/50 border border-white/10"><ChevronDown className="w-4 h-4 text-neutral-300" /></div>
@@ -672,7 +678,7 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
                 </div>
 
                 <div className={`
-                  px-6 pb-6 space-y-2 transition-all duration-300 ease-in-out bg-neutral-900/80 backdrop-blur-md
+                  px-6 pb-6 space-y-2 transition-all duration-300 ease-in-out bg-black/40 backdrop-blur-md
                   ${expandedId === workout.id ? 'block opacity-100' : 'hidden opacity-0'}
                 `}>
                   <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent mb-4" />
@@ -684,14 +690,14 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
                         e.stopPropagation();
                         toggleSet(workout.id, idx);
                       }}
-                      className="flex items-center justify-between group/set cursor-pointer py-3 active:scale-95 transition-transform duration-100 border-b border-transparent hover:border-red-500/20 hover:bg-red-500/5 rounded-lg px-2 -mx-2"
+                      className="flex items-center justify-between group/set cursor-pointer py-3 active:scale-95 transition-transform duration-100 border-b border-transparent hover:border-blue-500/20 hover:bg-blue-500/5 rounded-lg px-2 -mx-2"
                     >
                       <div className="flex items-center gap-4">
                         <div className={`
                           w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 border
                           ${set.completed 
-                            ? 'bg-red-600 border-red-600 shadow-[0_0_12px_rgba(220,38,38,0.6)] scale-110' 
-                            : 'bg-white/5 border-white/20 group-hover/set:border-red-500/50 group-hover/set:bg-red-500/10'}
+                            ? 'bg-blue-600 border-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.6)] scale-110' 
+                            : 'bg-white/5 border-white/20 group-hover/set:border-blue-500/50 group-hover/set:bg-blue-500/10'}
                         `}>
                           {set.completed && <Check className="w-3.5 h-3.5 text-white stroke-[3px]" />}
                         </div>
@@ -714,7 +720,7 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
                          e.stopPropagation();
                          setActiveModalId(workout.id);
                        }}
-                       className="w-full mt-4 py-3 bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold rounded-xl hover:bg-red-500/20 hover:text-white transition-colors"
+                       className="w-full mt-4 py-3 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold rounded-xl hover:bg-blue-500/20 hover:text-white transition-colors"
                      >
                        疲労度を入力する
                      </button>
@@ -787,12 +793,12 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
 
   return (
     <div className="pb-36 pt-24 animate-in fade-in duration-500 min-h-screen">
-      <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-neutral-900/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
+      <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-black/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
         <h2 className="text-xl font-black text-white tracking-tight flex items-center gap-2">
-           <Settings className="w-5 h-5 text-red-500" />
+           <Settings className="w-5 h-5 text-blue-500" />
            EDITOR
         </h2>
-        <button onClick={handleAdd} className="flex items-center gap-2 text-xs bg-red-600 text-white px-4 py-2.5 rounded-full font-bold shadow-lg hover:bg-red-500 transition-all active:scale-95 shadow-red-500/30">
+        <button onClick={handleAdd} className="flex items-center gap-2 text-xs bg-blue-600 text-white px-4 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-500 transition-all active:scale-95 shadow-blue-500/30">
           <Plus className="w-4 h-4" /> 追加
         </button>
       </header>
@@ -804,14 +810,14 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
           const currentSetCount = workout.sets.length;
 
           return (
-            <div key={workout.id} className="bg-white border border-neutral-200 rounded-3xl p-6 space-y-6 shadow-xl relative overflow-hidden">
-              <div className="flex justify-between items-start gap-4 border-b border-neutral-100 pb-4">
+            <div key={workout.id} className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 space-y-6 shadow-xl relative overflow-hidden">
+              <div className="flex justify-between items-start gap-4 border-b border-neutral-800 pb-4">
                 <div className="flex-1 space-y-3">
                   <div>
                     <input 
                       type="text" value={workout.name} 
                       onChange={(e) => handleChange(workout.id, 'name', e.target.value)}
-                      className="bg-transparent border-b border-neutral-300 text-neutral-800 font-bold text-lg w-full focus:outline-none focus:border-red-500 transition-colors placeholder-neutral-400 pb-1"
+                      className="bg-transparent border-b border-neutral-700 text-white font-bold text-lg w-full focus:outline-none focus:border-blue-500 transition-colors placeholder-neutral-600 pb-1"
                     />
                     <p className="text-[10px] text-neutral-500 mt-1 uppercase font-bold">種目名</p>
                   </div>
@@ -819,7 +825,7 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
                     <input 
                       type="text" value={workout.part} 
                       onChange={(e) => handleChange(workout.id, 'part', e.target.value)}
-                      className="bg-transparent border-b border-neutral-300 text-red-600 text-xs font-bold tracking-widest w-full focus:outline-none focus:border-red-500 transition-colors pb-1"
+                      className="bg-transparent border-b border-neutral-700 text-blue-500 text-xs font-bold tracking-widest w-full focus:outline-none focus:border-blue-500 transition-colors pb-1"
                     />
                     <p className="text-[10px] text-neutral-500 mt-1 uppercase font-bold">部位</p>
                   </div>
@@ -829,17 +835,16 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
                 </div>
               </div>
 
-              <div className="bg-neutral-50 rounded-2xl p-5 border border-neutral-100 space-y-6">
-                {/* 重量スライダー：ステップを5に設定 */}
+              <div className="bg-neutral-800/30 rounded-2xl p-5 border border-neutral-800 space-y-6">
                 <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={5} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
                 <SliderInput label="SETTING REPS (全セット共通)" value={currentReps} unit="回" min={1} max={30} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'reps', val)} mode="light" />
-                <div className="pt-2 border-t border-neutral-200/50">
+                <div className="pt-2 border-t border-neutral-800">
                    <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">TOTAL SETS</span>
-                      <span className="text-base font-bold font-mono text-neutral-900">{currentSetCount}<span className="text-xs ml-0.5 text-neutral-400">SETS</span></span>
+                      <span className="text-base font-bold font-mono text-white">{currentSetCount}<span className="text-xs ml-0.5 text-neutral-500">SETS</span></span>
                    </div>
-                   <input type="range" min={1} max={10} step={1} value={currentSetCount} onChange={(e) => handleSetCountChange(workout.id, e.target.value)} className="w-full h-2 bg-neutral-200 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-300 accent-neutral-600" />
-                   <div className="flex justify-between text-[10px] text-neutral-400 mt-1 px-1"><span>1</span><span>10</span></div>
+                   <input type="range" min={1} max={10} step={1} value={currentSetCount} onChange={(e) => handleSetCountChange(workout.id, e.target.value)} className="w-full h-2 bg-neutral-800 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-700 accent-neutral-500" />
+                   <div className="flex justify-between text-[10px] text-neutral-500 mt-1 px-1"><span>1</span><span>10</span></div>
                 </div>
               </div>
             </div>
@@ -853,12 +858,11 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
 
 // --- メインアプリ ---
 export default function App() {
-  const [activeTab, setActiveTab] = useState('workout'); // 'workout', 'edit', 'history'
+  const [activeTab, setActiveTab] = useState('workout'); 
   const [history, setHistory] = useState([]);
-  const [fatigueData, setFatigueData] = useState<any>({});
-  const [targetFrequency, setTargetFrequency] = useState(3);
-
-  // 初期データ構造
+  
+  // 初期値のロードロジック追加のため、state初期化時は空でもOKだが
+  // LocalStorageから読み込むまでは初期メニューを使う
   const initialMenu = [
     { 
       id: 1, name: 'チェストプレス', part: '胸',
@@ -869,6 +873,7 @@ export default function App() {
         { id: '1-3', weight: '60kg', reps: '10回', completed: false },
       ]
     },
+    // ... 他のメニュー（省略せず書きます）
     { 
       id: 2, name: 'リアデルト', part: '肩 / 背中',
       image: '',
@@ -944,9 +949,49 @@ export default function App() {
   ];
 
   const [workouts, setWorkouts] = useState(initialMenu);
+  const [fatigueData, setFatigueData] = useState<any>({});
+  const [targetFrequency, setTargetFrequency] = useState(3);
+  const sb = getSupabase();
+
+  // マウント時にLocalStorageからデータを復元
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedWorkouts = localStorage.getItem('workout_app_current_workouts');
+      const savedFatigue = localStorage.getItem('workout_app_current_fatigue');
+      
+      if (savedWorkouts) {
+        try {
+          setWorkouts(JSON.parse(savedWorkouts));
+        } catch (e) {
+          console.error("Failed to parse saved workouts", e);
+        }
+      }
+      
+      if (savedFatigue) {
+        try {
+          setFatigueData(JSON.parse(savedFatigue));
+        } catch (e) {
+          console.error("Failed to parse saved fatigue", e);
+        }
+      }
+    }
+  }, []);
+
+  // ワークアウトや疲労度が変わるたびにLocalStorageへ保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('workout_app_current_workouts', JSON.stringify(workouts));
+    }
+  }, [workouts]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('workout_app_current_fatigue', JSON.stringify(fatigueData));
+    }
+  }, [fatigueData]);
 
   const fetchHistory = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from('workout_logs')
       .select('*')
       .order('created_at', { ascending: false });
@@ -971,7 +1016,7 @@ export default function App() {
       fatigue: fatigueData[w.id] || null
     })).filter((item: any) => item.completedSets > 0); 
 
-    const { error } = await supabase
+    const { error } = await sb
       .from('workout_logs')
       .insert([
         { 
@@ -990,6 +1035,7 @@ export default function App() {
 
     alert('トレーニングを記録しました！');
     
+    // リセット時にLocalStorageもクリア
     const resetWorkouts = workouts.map((w: any) => ({
       ...w,
       sets: w.sets.map((s: any) => ({ ...s, completed: false }))
@@ -997,23 +1043,28 @@ export default function App() {
     setWorkouts(resetWorkouts);
     setFatigueData({});
     
+    localStorage.removeItem('workout_app_current_workouts');
+    localStorage.removeItem('workout_app_current_fatigue');
+    
     // Refresh history
     fetchHistory();
     setActiveTab('history');
   };
 
   return (
-    <div className="min-h-screen font-sans selection:bg-red-500 selection:text-white relative text-white">
+    <div className="min-h-screen font-sans selection:bg-blue-500 selection:text-white relative text-white bg-black">
       <div 
         className="fixed inset-0 z-[-1]"
         style={{
           backgroundImage: `url(${BACKGROUND_IMAGE})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.8,
-          filter: 'contrast(1.1) brightness(0.8) hue-rotate(-10deg)' 
+          opacity: 0.7,
+          filter: 'contrast(1.2) brightness(0.7) grayscale(0.5)' // 青黒く見せるフィルター
         }}
       />
+      {/* 青味を足すオーバーレイ */}
+      <div className="fixed inset-0 z-[-1] bg-blue-950/30 pointer-events-none mix-blend-overlay"></div>
       
       {activeTab === 'workout' && (
         <WorkoutView 
@@ -1041,8 +1092,8 @@ export default function App() {
         />
       )}
 
-      {/* ボトムナビゲーション (赤テーマ) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-6 py-4 bg-neutral-900/80 backdrop-blur-xl border-t border-white/10 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      {/* ボトムナビゲーション (青黒テーマ) */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-6 py-4 bg-black/90 backdrop-blur-xl border-t border-white/10 safe-area-bottom shadow-[0_-5px_20px_rgba(0,0,0,0.8)]">
         <div className="flex justify-around items-center max-w-md mx-auto">
           {[
             { id: 'workout', icon: Dumbbell, label: 'WORKOUT' },
@@ -1058,18 +1109,18 @@ export default function App() {
               `}
             >
               {activeTab === item.id && (
-                <div className="absolute inset-0 bg-red-600/20 blur-xl rounded-full" />
+                <div className="absolute inset-0 bg-blue-600/20 blur-xl rounded-full" />
               )}
               
               <item.icon 
-                className={`w-6 h-6 mb-1 transition-all duration-300 ${activeTab === item.id ? 'text-red-500 scale-110 drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]' : 'text-neutral-500 group-hover:text-neutral-300'}`} 
+                className={`w-6 h-6 mb-1 transition-all duration-300 ${activeTab === item.id ? 'text-blue-500 scale-110 drop-shadow-[0_0_8px_rgba(37,99,235,0.8)]' : 'text-neutral-500 group-hover:text-neutral-300'}`} 
               />
               <span className={`text-[9px] font-black tracking-widest transition-colors ${activeTab === item.id ? 'text-white' : 'text-neutral-500'}`}>
                 {item.label}
               </span>
               
               {activeTab === item.id && (
-                <div className="absolute -bottom-2 w-1 h-1 bg-red-500 rounded-full shadow-[0_0_5px_rgba(220,38,38,1)]" />
+                <div className="absolute -bottom-2 w-1 h-1 bg-blue-500 rounded-full shadow-[0_0_5px_rgba(37,99,235,1)]" />
               )}
             </button>
           ))}
