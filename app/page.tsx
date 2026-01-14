@@ -327,7 +327,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・1日単位グリッド) ---
+// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・1日単位グリッド・数字位置調整) ---
 const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDate: Date }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -345,13 +345,11 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 
   const currentCategory = categories[currentIndex];
 
-  // 現在表示されている月の日数を計算（1日〜末日）
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // グラフ用データの構築（その月の全日数分）
   const chartPoints = daysArray.map(day => {
     const checkDate = new Date(year, month, day);
     const dateStr = checkDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -380,8 +378,11 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
   };
 
   // グラフ描画定数
-  const height = 150; 
   const width = 300;
+  const height = 150; // グラフ自体の高さ
+  const marginBottom = 20; // X軸ラベル用の余白
+  const svgHeight = height + marginBottom;
+  
   const paddingX = 10;
   const paddingY = 10;
   const graphWidth = width - paddingX * 2;
@@ -413,26 +414,26 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
         </button>
       </div>
 
-      <div className="flex h-40">
+      <div className="flex h-48">
         {/* Y軸目盛り (1〜10常時表示) */}
-        <div className="flex flex-col justify-between items-end pr-2 py-0 text-[9px] text-neutral-500 font-mono h-full border-r border-neutral-800 w-6">
+        <div className="flex flex-col justify-between items-end pr-2 py-0 pb-6 text-[9px] text-neutral-500 font-mono h-full border-r border-neutral-800 w-6">
           {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
-            <span key={num} className="leading-none h-[10%] flex items-center">{num}</span>
+            <span key={num} className="leading-none flex items-center h-[10%]">{num}</span>
           ))}
         </div>
 
         {/* グラフ描画エリア */}
         <div className="flex-1 relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+          <svg viewBox={`0 0 ${width} ${svgHeight}`} className="w-full h-full" preserveAspectRatio="none">
             {/* 横グリッド線 (1〜10のレベルに合わせて描画) */}
             {[...Array(10)].map((_, i) => {
               const y = paddingY + (i / 9) * graphHeight;
               return (
-                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#222" strokeWidth="0.5" />
               );
             })}
             
-            {/* 縦グリッド線 (毎日描画に変更) */}
+            {/* 縦グリッド線 (毎日描画) */}
             {daysArray.map(day => {
                const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
                return (
@@ -456,20 +457,30 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
             {validPoints.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#1e40af" stroke="white" strokeWidth="1" />
             ))}
+
+            {/* X軸ラベル (SVG内描画) */}
+            {daysArray.map(day => {
+              // 表示条件: 1日, 5の倍数, 末日
+              if (day !== 1 && day % 5 !== 0 && day !== daysInMonth) return null;
+              
+              const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
+              
+              return (
+                <text 
+                  key={day} 
+                  x={x} 
+                  y={height + 15} 
+                  textAnchor="middle" 
+                  fill="#737373" // text-neutral-500
+                  fontSize="10"
+                  fontFamily="monospace"
+                >
+                  {day}
+                </text>
+              );
+            })}
           </svg>
         </div>
-      </div>
-      
-      {/* X軸ラベル (5日おきに表示) */}
-      <div className="flex justify-between text-[8px] text-neutral-500 px-8 pt-1">
-        {daysArray.filter(d => d % 5 === 0 || d === 1).map(day => (
-          <span key={day} style={{ 
-            position: 'absolute', 
-            left: `${paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth + 30}px` 
-          }}>
-            {day}
-          </span>
-        ))}
       </div>
     </div>
   );
@@ -962,7 +973,7 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
                 <div className="pt-2 border-t border-neutral-800">
                    <div className="flex justify-between items-center mb-2">
                       <span className="text-[10px] text-neutral-500 uppercase font-bold tracking-wider">TOTAL SETS</span>
-                      <span className="text-base font-bold font-mono text-white">{currentSetCount}<span className="text-xs ml-0.5 text-neutral-400">SETS</span></span>
+                      <span className="text-base font-bold font-mono text-white">{currentSetCount}<span className="text-xs ml-0.5 text-neutral-500">SETS</span></span>
                    </div>
                    <input type="range" min={1} max={10} step={1} value={currentSetCount} onChange={(e) => handleSetCountChange(workout.id, e.target.value)} className="w-full h-2 bg-neutral-800 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-700 accent-neutral-500" />
                    <div className="flex justify-between text-[10px] text-neutral-500 mt-1 px-1"><span>1</span><span>10</span></div>
