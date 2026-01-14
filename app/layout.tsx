@@ -1,30 +1,32 @@
 import type { Metadata, Viewport } from "next";
 
-// 【重要: コピペ後の作業 1/2】
+// 【重要: コピペ後の作業】
 // VS Codeに貼り付けた後、以下の2行の先頭にある「// 」を消して有効にしてください
-import { Inter } from "next/font/google";
-import "./globals.css";
+// import { Inter } from "next/font/google";
+// import "./globals.css";
 
-// 【重要: コピペ後の作業 2/2】
-// 以下の行も同様にコメントアウトを外してください
-const inter = Inter({ subsets: ["latin"] });
+// ↓この行もコメントアウトを外してください
+// const inter = Inter({ subsets: ["latin"] });
 
-// スマホでアプリっぽく見せるための画面設定
 export const viewport: Viewport = {
   themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false, // 勝手にズームされないようにする
+  userScalable: false,
 };
 
-// アプリのタイトルやiOS向けの設定
 export const metadata: Metadata = {
-  title: "Red Workout Log",
+  title: "Blue Workout Log", // 青テーマに合わせてタイトル変更
   description: "Personal Training Logger",
+  // ▼ ここが重要：アイコンの設定を追加
+  icons: {
+    icon: "/icon.png",       // ブラウザのタブ用
+    apple: "/icon.png",      // iPhoneのホーム画面用
+  },
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent", // ステータスバーを透明に
+    statusBarStyle: "black-translucent",
     title: "Workout",
   },
 };

@@ -2,18 +2,23 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Red Workout',
+    name: 'Blue Workout',
     short_name: 'Workout',
     description: 'My personal workout logger',
     start_url: '/',
-    display: 'standalone', // これが「アプリっぽく全画面表示」にする設定
-    background_color: '#0a0a0a',
-    theme_color: '#dc2626',
+    display: 'standalone',
+    background_color: '#000000',
+    theme_color: '#000000',
     icons: [
       {
-        src: '/logo.jpg', // publicフォルダに置いた画像
-        sizes: 'any',
-        type: 'image/jpg',
+        src: '/icon.png', // publicフォルダのicon.pngを参照
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        src: '/icon.png',
+        sizes: '512x512',
+        type: 'image/png',
       },
     ],
   };
