@@ -1,30 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-
-// 【重要: コピペ後の作業】
-// VS Codeに貼り付けた後、↓の行の先頭にある「// 」を消して有効にしてください！
-// import { supabase } from '@/lib/supabaseClient';
-
-// --- 以下はプレビュー用ダミー (VS Codeで上記を有効にしたら、このブロックは削除または無視してOKです) ---
-const supabaseDummy = {
-  from: () => ({
-    select: () => ({ order: () => Promise.resolve({ data: [], error: null }) }),
-    insert: () => Promise.resolve({ error: null }),
-    delete: () => ({ eq: () => Promise.resolve({ error: null }) })
-  })
-};
-const getSupabase = () => {
-  // @ts-ignore
-  if (typeof supabase !== 'undefined') return supabase;
-  return supabaseDummy;
-};
-// -----------------------------------------------------------------------------
-
+import { supabase } from '@/lib/supabaseClient'; // ローカル環境用の設定ファイルを直接読み込みます
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
   Settings, Calendar as CalendarIcon, Dumbbell, Plus, Trash2,
-  Activity, X, ChevronLeft, ChevronRight, Edit3
+  Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp
 } from 'lucide-react';
 
 // --- 背景画像の定数 (青系のジム画像) ---
@@ -53,7 +34,7 @@ interface LogDetailModalProps {
   onDelete: (id: number | string) => void;
 }
 
-// --- コンポーネント: 詳細表示モーダル (青テーマ) ---
+// --- コンポーネント: 詳細表示モーダル ---
 const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
   if (!log) return null;
 
@@ -74,7 +55,6 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
         className="bg-neutral-900 w-full max-w-sm rounded-3xl p-6 shadow-2xl shadow-blue-900/20 relative overflow-hidden animate-in slide-in-from-bottom-4 zoom-in-95 duration-300 border border-blue-500/20"
         onClick={e => e.stopPropagation()}
       >
-        {/* ヘッダー */}
         <div className="flex justify-between items-start mb-6 border-b border-neutral-800 pb-4">
           <div>
             <p className="text-xs font-bold text-blue-400 tracking-widest mb-1">WORKOUT DETAIL</p>
@@ -99,7 +79,6 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
           </div>
         </div>
 
-        {/* サマリー */}
         <div className="flex gap-4 mb-6">
           <div className="flex-1 bg-blue-950/30 rounded-2xl p-4 border border-blue-500/30">
             <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">TOTAL SETS</p>
@@ -111,7 +90,6 @@ const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
           </div>
         </div>
 
-        {/* 詳細リスト */}
         <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
           {log.items.map((item, idx) => (
             <div key={idx} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-sm flex justify-between items-center">
@@ -152,12 +130,10 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
   const [value, setValue] = useState(5);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // モーダルが開いた時に中央付近へスクロール
   useEffect(() => {
     if (isOpen && scrollRef.current) {
       setTimeout(() => {
         if (scrollRef.current) {
-          // 初期位置調整（簡易的）
           const el = scrollRef.current;
           el.scrollLeft = (value - 1) * 60; 
         }
@@ -174,7 +150,7 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
       <div className="bg-neutral-900 border border-blue-500/30 w-full max-w-sm rounded-3xl p-6 shadow-[0_0_50px_rgba(59,130,246,0.2)] relative overflow-hidden">
         
         <h3 className="text-center text-white font-bold text-lg mb-1">{exerciseName}</h3>
-        <p className="text-center text-blue-400 text-xs font-bold tracking-widest mb-8">FATIGUE LEVEL (横スクロール)</p>
+        <p className="text-center text-blue-400 text-xs font-bold tracking-widest mb-8">FATIGUE LEVEL</p>
 
         <div className="relative mb-8 group">
           <div 
@@ -202,7 +178,6 @@ const FatigueModal = ({ isOpen, onClose, onSave, exerciseName }: any) => {
               </div>
             ))}
           </div>
-          {/* インジケータ */}
           <div className="flex justify-center gap-1 mt-2">
             {levels.map(l => (
               <div key={l} className={`w-1 h-1 rounded-full transition-colors ${value === l ? 'bg-blue-500' : 'bg-neutral-800'}`} />
@@ -268,13 +243,12 @@ const DeleteButton = ({ onDelete }: any) => {
   );
 };
 
-// --- コンポーネント: スライダー＋数値入力 (手打ち対応) ---
+// --- コンポーネント: スライダー＋数値入力 (1kg単位) ---
 const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   const numericValue = parseFloat(value) || 0;
 
   const handleChange = (e: any) => {
     let val = e.target.value;
-    // 数値入力で空の場合は0扱いなどにせずそのまま渡して操作性を良くする
     onChange(`${val}${unit}`);
   };
 
@@ -305,12 +279,12 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
         </div>
         
         {/* 手打ち入力エリア */}
-        <div className="flex items-center bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 w-24">
+        <div className="flex items-center bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 w-24 focus-within:border-blue-500 transition-colors">
           <input
             type="number"
             min={min}
             max={max}
-            step={step} // ステップも適用
+            step={step}
             value={numericValue}
             onChange={handleNumberChange}
             className="w-full bg-transparent text-right text-lg font-bold font-mono text-white focus:outline-none"
@@ -322,11 +296,108 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: カレンダービュー (青テーマ) ---
-const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => {
+// --- コンポーネント: 疲労度グラフ (SVG) ---
+const FatigueChart = ({ history }: { history: LogData[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const categories = Array.from(new Set(
+    history.flatMap(log => log.items.map(item => item.name))
+  )).sort();
+
+  if (categories.length === 0) {
+    return (
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 text-center text-neutral-600 text-xs">
+        ログを記録するとここにグラフが表示されます
+      </div>
+    );
+  }
+
+  const currentCategory = categories[currentIndex];
+
+  const chartData = history
+    .filter(log => log.items.some(item => item.name === currentCategory))
+    .map(log => {
+      const item = log.items.find(i => i.name === currentCategory);
+      return {
+        date: log.date.split('(')[0].slice(5),
+        fatigue: item?.fatigue || 0
+      };
+    })
+    .reverse();
+
+  const handlePrev = () => {
+    setCurrentIndex(prev => (prev - 1 + categories.length) % categories.length);
+  };
+
+  const handleNext = () => {
+    setCurrentIndex(prev => (prev + 1) % categories.length);
+  };
+
+  const width = 100;
+  const height = 50;
+  const points = chartData.map((d, i) => {
+    const x = (i / (chartData.length - 1 || 1)) * width;
+    const y = height - ((d.fatigue / 10) * height);
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl space-y-4">
+      <div className="flex justify-between items-center">
+        <button onClick={handlePrev} className="p-2 text-neutral-500 hover:text-white transition-colors">
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <div className="text-center">
+          <p className="text-[10px] font-bold text-blue-500 tracking-widest uppercase">FATIGUE TREND</p>
+          <h3 className="text-white font-bold text-sm mt-1">{currentCategory}</h3>
+        </div>
+        <button onClick={handleNext} className="p-2 text-neutral-500 hover:text-white transition-colors">
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="h-32 w-full relative bg-neutral-900/50 rounded-xl border border-neutral-800 overflow-hidden">
+        {chartData.length > 1 ? (
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full p-2" preserveAspectRatio="none">
+            <line x1="0" y1="0" x2="100" y2="0" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+            <line x1="0" y1="25" x2="100" y2="25" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+            
+            <polyline
+              points={points}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {chartData.map((d, i) => {
+              const x = (i / (chartData.length - 1 || 1)) * width;
+              const y = height - ((d.fatigue / 10) * height);
+              return (
+                <circle key={i} cx={x} cy={y} r="3" fill="#1e40af" stroke="white" strokeWidth="1" />
+              );
+            })}
+          </svg>
+        ) : (
+          <div className="flex items-center justify-center h-full text-xs text-neutral-600">
+            データ不足（2回以上の記録が必要です）
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-between text-[9px] text-neutral-500 px-2">
+        <span>{chartData[0]?.date}</span>
+        <span>{chartData[chartData.length - 1]?.date}</span>
+      </div>
+    </div>
+  );
+};
+
+// --- コンポーネント: カレンダービュー ---
+const CalendarView = ({ history }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
-  const sb = getSupabase();
 
   const changeMonth = (offset: number) => {
     const newDate = new Date(currentDate.setMonth(currentDate.getMonth() + offset));
@@ -357,7 +428,7 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
     if (!confirm('本当にこのログを削除しますか？\n（この操作は取り消せません）')) return;
 
     try {
-      const { error } = await sb
+      const { error } = await supabase
         .from('workout_logs')
         .delete()
         .eq('id', id);
@@ -369,18 +440,9 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
       window.location.reload(); 
     } catch (error) {
       console.error('Error deleting log:', error);
-      alert('削除に失敗しました（プレビュー環境では動作しません）');
+      alert('削除に失敗しました');
     }
   };
-
-  const weeklyCount = history.length > 0 ? history.length : 0; 
-  
-  let paceMessage = "まずは週1回から始めましょう。";
-  if (weeklyCount >= targetFrequency) {
-    paceMessage = "素晴らしい！目標ペースを達成しています。";
-  } else if (weeklyCount > 0) {
-    paceMessage = `あと${targetFrequency - weeklyCount}回で目標達成です。`;
-  }
 
   return (
     <div className="pb-36 pt-24 animate-in fade-in duration-500 min-h-screen">
@@ -398,48 +460,6 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
       </header>
       
       <div className="max-w-md mx-auto px-5 space-y-6 pt-4">
-        {/* 目標設定エリア */}
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <p className="text-[10px] font-bold text-blue-500 tracking-widest mb-1">WEEKLY GOAL</p>
-              <h3 className="text-white font-bold text-lg">今週の目標設定</h3>
-            </div>
-            <div className="flex items-center gap-3 bg-neutral-800 px-3 py-1.5 rounded-full border border-neutral-700">
-              <button 
-                onClick={() => setTargetFrequency(Math.max(1, targetFrequency - 1))}
-                className="text-neutral-400 hover:text-blue-500"
-              >
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              <span className="text-xl font-black text-blue-500 font-mono w-4 text-center">{targetFrequency}</span>
-              <button 
-                onClick={() => setTargetFrequency(Math.min(7, targetFrequency + 1))}
-                className="text-neutral-400 hover:text-blue-500"
-              >
-                <ChevronUp className="w-4 h-4" />
-              </button>
-              <span className="text-xs text-neutral-400 font-bold ml-1">DAYS</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex justify-between text-xs text-neutral-500">
-              <span>現在のペース</span>
-              <span className="text-white font-bold">{weeklyCount}回 / 週</span>
-            </div>
-            <div className="w-full h-2 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
-              <div 
-                className={`h-full transition-all duration-500 ${weeklyCount >= targetFrequency ? 'bg-blue-500 shadow-lg shadow-blue-500/50' : 'bg-blue-900'}`}
-                style={{ width: `${Math.min(100, (weeklyCount / targetFrequency) * 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-neutral-400 mt-2 text-center bg-neutral-800/50 py-2 rounded-lg border border-neutral-800 font-medium">
-              {paceMessage}
-            </p>
-          </div>
-        </div>
-
         {/* カレンダーエリア */}
         <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl">
           <div className="flex justify-between items-center mb-6">
@@ -491,6 +511,9 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
           </div>
         </div>
 
+        {/* グラフエリア */}
+        <FatigueChart history={history} />
+
         {/* リスト表示 */}
         <div className="space-y-4">
           <p className="text-[10px] font-bold text-neutral-500 tracking-widest px-2">RECENT HISTORY</p>
@@ -527,7 +550,7 @@ const CalendarView = ({ history, targetFrequency, setTargetFrequency }: any) => 
 };
 
 // --- コンポーネント: トレーニング実行画面 (Home: 青テーマ) ---
-const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueData, targetFrequency }: any) => {
+const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueData }: any) => {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [activeModalId, setActiveModalId] = useState<number | null>(null);
 
@@ -643,7 +666,6 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
               `}
             >
               <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl">
-                {/* 背景: 青黒グラデーション */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-neutral-950 to-black" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent opacity-70" />
               </div>
@@ -836,7 +858,7 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
               </div>
 
               <div className="bg-neutral-800/30 rounded-2xl p-5 border border-neutral-800 space-y-6">
-                <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={5} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
+                <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
                 <SliderInput label="SETTING REPS (全セット共通)" value={currentReps} unit="回" min={1} max={30} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'reps', val)} mode="light" />
                 <div className="pt-2 border-t border-neutral-800">
                    <div className="flex justify-between items-center mb-2">
@@ -858,11 +880,11 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
 
 // --- メインアプリ ---
 export default function App() {
-  const [activeTab, setActiveTab] = useState('workout'); 
+  const [activeTab, setActiveTab] = useState('workout'); // 'workout', 'edit', 'history'
   const [history, setHistory] = useState([]);
-  
-  // 初期値のロードロジック追加のため、state初期化時は空でもOKだが
-  // LocalStorageから読み込むまでは初期メニューを使う
+  const [fatigueData, setFatigueData] = useState<any>({});
+
+  // 初期データ構造
   const initialMenu = [
     { 
       id: 1, name: 'チェストプレス', part: '胸',
@@ -873,7 +895,6 @@ export default function App() {
         { id: '1-3', weight: '60kg', reps: '10回', completed: false },
       ]
     },
-    // ... 他のメニュー（省略せず書きます）
     { 
       id: 2, name: 'リアデルト', part: '肩 / 背中',
       image: '',
@@ -949,9 +970,6 @@ export default function App() {
   ];
 
   const [workouts, setWorkouts] = useState(initialMenu);
-  const [fatigueData, setFatigueData] = useState<any>({});
-  const [targetFrequency, setTargetFrequency] = useState(3);
-  const sb = getSupabase();
 
   // マウント時にLocalStorageからデータを復元
   useEffect(() => {
@@ -991,7 +1009,7 @@ export default function App() {
   }, [fatigueData]);
 
   const fetchHistory = async () => {
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from('workout_logs')
       .select('*')
       .order('created_at', { ascending: false });
@@ -1016,7 +1034,7 @@ export default function App() {
       fatigue: fatigueData[w.id] || null
     })).filter((item: any) => item.completedSets > 0); 
 
-    const { error } = await sb
+    const { error } = await supabase
       .from('workout_logs')
       .insert([
         { 
@@ -1073,7 +1091,6 @@ export default function App() {
           onFinish={handleFinishWorkout}
           fatigueData={fatigueData}
           setFatigueData={setFatigueData}
-          targetFrequency={targetFrequency}
         />
       )}
       
@@ -1087,8 +1104,6 @@ export default function App() {
       {activeTab === 'history' && (
         <CalendarView 
           history={history} 
-          targetFrequency={targetFrequency}
-          setTargetFrequency={setTargetFrequency}
         />
       )}
 
