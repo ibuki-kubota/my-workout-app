@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient'; 
+import { supabase } from '@/lib/supabaseClient'; // ローカル環境用の設定ファイルを直接読み込みます
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
   Settings, Calendar as CalendarIcon, Dumbbell, Plus, Trash2,
   Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp, AlertTriangle
 } from 'lucide-react';
 
-// --- 背景画像の定数 (青系のジム画像) ---
-const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2564&auto=format&fit=crop";
+// --- 背景画像の定数 (publicフォルダの画像) ---
+const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
 
 // --- 型定義 ---
 
@@ -34,7 +34,7 @@ interface LogDetailModalProps {
   onDelete: (id: number | string) => void;
 }
 
-// --- コンポーネント: 確認用モーダル (標準confirmの代わり) ---
+// --- コンポーネント: 確認用モーダル ---
 const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "OK", confirmColor = "bg-blue-600" }: any) => {
   if (!isOpen) return null;
 
@@ -327,7 +327,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・Y軸全表示・グリッド付き) ---
+// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・1日単位グリッド) ---
 const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDate: Date }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -345,11 +345,13 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 
   const currentCategory = categories[currentIndex];
 
+  // 現在表示されている月の日数を計算（1日〜末日）
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  // グラフ用データの構築（その月の全日数分）
   const chartPoints = daysArray.map(day => {
     const checkDate = new Date(year, month, day);
     const dateStr = checkDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -377,6 +379,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
     setCurrentIndex(prev => (prev + 1) % categories.length);
   };
 
+  // グラフ描画定数
   const height = 150; 
   const width = 300;
   const paddingX = 10;
@@ -384,6 +387,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
   const graphWidth = width - paddingX * 2;
   const graphHeight = height - paddingY * 2;
 
+  // データがあるポイントだけを抽出して線で結ぶ
   const validPoints = chartPoints
     .filter(d => d.fatigue !== null)
     .map(d => {
@@ -410,50 +414,62 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
       </div>
 
       <div className="flex h-40">
-        <div className="flex flex-col justify-between items-end pr-2 py-2 text-[9px] text-neutral-500 font-mono h-full border-r border-neutral-800">
+        {/* Y軸目盛り (1〜10常時表示) */}
+        <div className="flex flex-col justify-between items-end pr-2 py-0 text-[9px] text-neutral-500 font-mono h-full border-r border-neutral-800 w-6">
           {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
-            <span key={num} className="leading-none">{num}</span>
+            <span key={num} className="leading-none h-[10%] flex items-center">{num}</span>
           ))}
         </div>
 
+        {/* グラフ描画エリア */}
         <div className="flex-1 relative">
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+            {/* 横グリッド線 (1〜10のレベルに合わせて描画) */}
             {[...Array(10)].map((_, i) => {
               const y = paddingY + (i / 9) * graphHeight;
               return (
-                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#222" strokeWidth="0.5" />
+                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
               );
             })}
             
-            {daysArray.filter(d => d % 5 === 0 || d === 1 || d === daysInMonth).map(day => {
+            {/* 縦グリッド線 (毎日描画に変更) */}
+            {daysArray.map(day => {
                const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
                return (
                  <line key={day} x1={x} y1="0" x2={x} y2={height} stroke="#222" strokeWidth="0.5" />
                );
             })}
 
+            {/* 折れ線 */}
             {validPoints.length > 1 && (
               <polyline
                 points={polylinePoints}
                 fill="none"
                 stroke="#3b82f6"
-                strokeWidth="2"
+                strokeWidth="1.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             )}
 
+            {/* 点 */}
             {validPoints.map((p, i) => (
-              <circle key={i} cx={p.x} cy={p.y} r="3" fill="#1e40af" stroke="white" strokeWidth="1" />
+              <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#1e40af" stroke="white" strokeWidth="1" />
             ))}
           </svg>
         </div>
       </div>
       
-      <div className="flex justify-between text-[9px] text-neutral-500 px-8">
-        <span>1日</span>
-        <span>15日</span>
-        <span>{daysInMonth}日</span>
+      {/* X軸ラベル (5日おきに表示) */}
+      <div className="flex justify-between text-[8px] text-neutral-500 px-8 pt-1">
+        {daysArray.filter(d => d % 5 === 0 || d === 1).map(day => (
+          <span key={day} style={{ 
+            position: 'absolute', 
+            left: `${paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth + 30}px` 
+          }}>
+            {day}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -463,7 +479,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 const CalendarView = ({ history }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | string | null>(null); // 削除確認用ID
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | string | null>(null);
 
   const changeMonth = (offset: number) => {
     const newDate = new Date(currentDate.setMonth(currentDate.getMonth() + offset));
@@ -490,12 +506,10 @@ const CalendarView = ({ history }: any) => {
     return history.find((log: any) => log.date === dateStr);
   };
 
-  // 削除ボタンクリック時の処理（モーダルを開く）
   const handleDeleteRequest = (id: number | string) => {
     setDeleteConfirmId(id);
   };
 
-  // 実際の削除実行処理
   const executeDeleteLog = async () => {
     if (!deleteConfirmId) return;
     
@@ -507,7 +521,6 @@ const CalendarView = ({ history }: any) => {
 
       if (error) throw error;
 
-      // 削除成功時は静かに更新（アラートなし）
       setDeleteConfirmId(null);
       setSelectedLog(null);
       window.location.reload(); 
@@ -530,7 +543,7 @@ const CalendarView = ({ history }: any) => {
         onConfirm={executeDeleteLog}
       />
 
-      {/* 詳細モーダル (削除依頼時は handleDeleteRequest を呼ぶ) */}
+      {/* 詳細モーダル */}
       <LogDetailModal 
         log={selectedLog} 
         onClose={() => setSelectedLog(null)} 
@@ -944,7 +957,6 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
               </div>
 
               <div className="bg-neutral-800/30 rounded-2xl p-5 border border-neutral-800 space-y-6">
-                {/* 重量スライダー：ステップを5に設定 */}
                 <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
                 <SliderInput label="SETTING REPS (全セット共通)" value={currentReps} unit="回" min={1} max={30} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'reps', val)} mode="light" />
                 <div className="pt-2 border-t border-neutral-800">
