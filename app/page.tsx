@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // ローカル環境用の設定ファイルを直接読み込みます
+import { supabase } from '@/lib/supabaseClient'; 
 import { 
   Check, Trophy, ChevronDown, ChevronUp, 
   Settings, Calendar as CalendarIcon, Dumbbell, Plus, Trash2,
-  Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp
+  Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp, AlertTriangle
 } from 'lucide-react';
 
 // --- 背景画像の定数 (青系のジム画像) ---
@@ -33,6 +33,39 @@ interface LogDetailModalProps {
   onClose: () => void;
   onDelete: (id: number | string) => void;
 }
+
+// --- コンポーネント: 確認用モーダル (標準confirmの代わり) ---
+const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "OK", confirmColor = "bg-blue-600" }: any) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-neutral-900 border border-neutral-700 w-full max-w-xs rounded-3xl p-6 shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex flex-col items-center text-center mb-6">
+          <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center mb-4">
+            <AlertTriangle className="w-6 h-6 text-yellow-500" />
+          </div>
+          <h3 className="text-white font-bold text-lg mb-2">{title}</h3>
+          <p className="text-neutral-400 text-sm leading-relaxed">{message}</p>
+        </div>
+        <div className="flex gap-3">
+          <button 
+            onClick={onCancel}
+            className="flex-1 py-3 bg-neutral-800 text-neutral-300 font-bold text-sm rounded-xl hover:bg-neutral-700 transition-colors"
+          >
+            キャンセル
+          </button>
+          <button 
+            onClick={onConfirm}
+            className={`flex-1 py-3 text-white font-bold text-sm rounded-xl shadow-lg transition-all active:scale-95 ${confirmColor}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // --- コンポーネント: 詳細表示モーダル ---
 const LogDetailModal = ({ log, onClose, onDelete }: LogDetailModalProps) => {
@@ -312,13 +345,11 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 
   const currentCategory = categories[currentIndex];
 
-  // 現在表示されている月の日数を計算（1日〜末日）
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0-indexed
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // グラフ用データの構築（その月の全日数分）
   const chartPoints = daysArray.map(day => {
     const checkDate = new Date(year, month, day);
     const dateStr = checkDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -346,7 +377,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
     setCurrentIndex(prev => (prev + 1) % categories.length);
   };
 
-  // グラフ描画定数
   const height = 150; 
   const width = 300;
   const paddingX = 10;
@@ -354,12 +384,10 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
   const graphWidth = width - paddingX * 2;
   const graphHeight = height - paddingY * 2;
 
-  // データがあるポイントだけを抽出して線で結ぶ
   const validPoints = chartPoints
     .filter(d => d.fatigue !== null)
     .map(d => {
       const x = paddingX + ((d.day - 1) / (daysInMonth - 1)) * graphWidth;
-      // Y軸: 1〜10。 (10 - val) / (10 - 1) * height
       const y = paddingY + ((10 - (d.fatigue as number)) / 9) * graphHeight;
       return { x, y, val: d.fatigue };
     });
@@ -382,17 +410,14 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
       </div>
 
       <div className="flex h-40">
-        {/* Y軸目盛り (1〜10常時表示) */}
         <div className="flex flex-col justify-between items-end pr-2 py-2 text-[9px] text-neutral-500 font-mono h-full border-r border-neutral-800">
           {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(num => (
             <span key={num} className="leading-none">{num}</span>
           ))}
         </div>
 
-        {/* グラフ描画エリア */}
         <div className="flex-1 relative">
           <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-            {/* 横グリッド線 (1〜10のレベルに合わせて描画) */}
             {[...Array(10)].map((_, i) => {
               const y = paddingY + (i / 9) * graphHeight;
               return (
@@ -400,7 +425,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
               );
             })}
             
-            {/* 縦グリッド線 (5日おきに描画) */}
             {daysArray.filter(d => d % 5 === 0 || d === 1 || d === daysInMonth).map(day => {
                const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
                return (
@@ -408,7 +432,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
                );
             })}
 
-            {/* 折れ線 */}
             {validPoints.length > 1 && (
               <polyline
                 points={polylinePoints}
@@ -420,7 +443,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
               />
             )}
 
-            {/* 点 */}
             {validPoints.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r="3" fill="#1e40af" stroke="white" strokeWidth="1" />
             ))}
@@ -428,7 +450,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
         </div>
       </div>
       
-      {/* X軸ラベル */}
       <div className="flex justify-between text-[9px] text-neutral-500 px-8">
         <span>1日</span>
         <span>15日</span>
@@ -442,6 +463,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 const CalendarView = ({ history }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedLog, setSelectedLog] = useState<LogData | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | string | null>(null); // 削除確認用ID
 
   const changeMonth = (offset: number) => {
     const newDate = new Date(currentDate.setMonth(currentDate.getMonth() + offset));
@@ -468,18 +490,25 @@ const CalendarView = ({ history }: any) => {
     return history.find((log: any) => log.date === dateStr);
   };
 
-  const handleDeleteLog = async (id: number | string) => {
-    if (!confirm('本当にこのログを削除しますか？\n（この操作は取り消せません）')) return;
+  // 削除ボタンクリック時の処理（モーダルを開く）
+  const handleDeleteRequest = (id: number | string) => {
+    setDeleteConfirmId(id);
+  };
 
+  // 実際の削除実行処理
+  const executeDeleteLog = async () => {
+    if (!deleteConfirmId) return;
+    
     try {
       const { error } = await supabase
         .from('workout_logs')
         .delete()
-        .eq('id', id);
+        .eq('id', deleteConfirmId);
 
       if (error) throw error;
 
-      alert('削除しました');
+      // 削除成功時は静かに更新（アラートなし）
+      setDeleteConfirmId(null);
       setSelectedLog(null);
       window.location.reload(); 
     } catch (error) {
@@ -490,10 +519,22 @@ const CalendarView = ({ history }: any) => {
 
   return (
     <div className="pb-36 pt-24 animate-in fade-in duration-500 min-h-screen">
+      {/* 削除確認モーダル */}
+      <ConfirmModal 
+        isOpen={!!deleteConfirmId}
+        title="ログの削除"
+        message="本当にこの記録を削除しますか？この操作は取り消せません。"
+        confirmText="削除する"
+        confirmColor="bg-red-600 hover:bg-red-500"
+        onCancel={() => setDeleteConfirmId(null)}
+        onConfirm={executeDeleteLog}
+      />
+
+      {/* 詳細モーダル (削除依頼時は handleDeleteRequest を呼ぶ) */}
       <LogDetailModal 
         log={selectedLog} 
-        onClose={() => setSelectedLog(null)}
-        onDelete={handleDeleteLog}
+        onClose={() => setSelectedLog(null)} 
+        onDelete={handleDeleteRequest}
       />
 
       <header className="fixed top-0 left-0 right-0 z-20 px-6 py-6 flex justify-between items-center bg-black/80 backdrop-blur-xl border-b border-white/5 shadow-2xl">
@@ -929,7 +970,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('workout'); // 'workout', 'edit', 'history'
   const [history, setHistory] = useState([]);
   const [fatigueData, setFatigueData] = useState<any>({});
-  const [targetFrequency, setTargetFrequency] = useState(3);
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState(false); // 完了確認用
 
   // 初期データ構造
   const initialMenu = [
@@ -1068,8 +1109,14 @@ export default function App() {
     fetchHistory();
   }, []);
 
-  const handleFinishWorkout = async () => {
-    if (!confirm('本日のトレーニングを完了し、履歴に保存しますか？')) return;
+  // 完了ボタンが押されたとき（モーダルを開く）
+  const handleFinishClick = () => {
+    setFinishConfirmOpen(true);
+  };
+
+  // モーダルでOKされたときの実際の処理
+  const executeFinishWorkout = async () => {
+    setFinishConfirmOpen(false); // モーダル閉じる
 
     const now = new Date();
     const dateStr = now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
@@ -1081,39 +1128,38 @@ export default function App() {
       fatigue: fatigueData[w.id] || null
     })).filter((item: any) => item.completedSets > 0); 
 
-    const { error } = await supabase
-      .from('workout_logs')
-      .insert([
-        { 
-          date: dateStr, 
-          total_sets: logItems.reduce((acc: number, curr: any) => acc + curr.completedSets, 0),
-          items: logItems, 
-          fatigue_data: fatigueData 
-        }
-      ]);
+    try {
+      const { error } = await supabase
+        .from('workout_logs')
+        .insert([
+          { 
+            date: dateStr, 
+            total_sets: logItems.reduce((acc: number, curr: any) => acc + curr.completedSets, 0),
+            items: logItems, 
+            fatigue_data: fatigueData 
+          }
+        ]);
 
-    if (error) {
-        console.error('Error saving workout:', error);
-        alert('保存に失敗しました。');
-        return;
+      if (error) throw error;
+
+      // 保存成功時のリセット処理
+      const resetWorkouts = workouts.map((w: any) => ({
+        ...w,
+        sets: w.sets.map((s: any) => ({ ...s, completed: false }))
+      }));
+      setWorkouts(resetWorkouts);
+      setFatigueData({});
+      
+      localStorage.removeItem('workout_app_current_workouts');
+      localStorage.removeItem('workout_app_current_fatigue');
+      
+      fetchHistory();
+      setActiveTab('history');
+    } catch (e) {
+      console.error('Error saving workout:', e);
+      // ここでエラーアラートを出すかは任意だが、モーダルシステム的にはToastなどが望ましい
+      // 今回はシンプルにログ出力のみとする
     }
-
-    alert('トレーニングを記録しました！');
-    
-    // リセット時にLocalStorageもクリア
-    const resetWorkouts = workouts.map((w: any) => ({
-      ...w,
-      sets: w.sets.map((s: any) => ({ ...s, completed: false }))
-    }));
-    setWorkouts(resetWorkouts);
-    setFatigueData({});
-    
-    localStorage.removeItem('workout_app_current_workouts');
-    localStorage.removeItem('workout_app_current_fatigue');
-    
-    // Refresh history
-    fetchHistory();
-    setActiveTab('history');
   };
 
   return (
@@ -1131,14 +1177,23 @@ export default function App() {
       {/* 青味を足すオーバーレイ */}
       <div className="fixed inset-0 z-[-1] bg-blue-950/30 pointer-events-none mix-blend-overlay"></div>
       
+      {/* 完了確認モーダル */}
+      <ConfirmModal 
+        isOpen={finishConfirmOpen}
+        title="トレーニングの完了"
+        message="本日のトレーニングを終了し、履歴に保存しますか？"
+        confirmText="完了する"
+        onCancel={() => setFinishConfirmOpen(false)}
+        onConfirm={executeFinishWorkout}
+      />
+
       {activeTab === 'workout' && (
         <WorkoutView 
           workouts={workouts} 
           setWorkouts={setWorkouts} 
-          onFinish={handleFinishWorkout}
+          onFinish={handleFinishClick} // confirmではなく自作モーダル関数へ
           fatigueData={fatigueData}
           setFatigueData={setFatigueData}
-          targetFrequency={targetFrequency}
         />
       )}
       
@@ -1152,8 +1207,6 @@ export default function App() {
       {activeTab === 'history' && (
         <CalendarView 
           history={history} 
-          targetFrequency={targetFrequency}
-          setTargetFrequency={setTargetFrequency}
         />
       )}
 
