@@ -8,7 +8,7 @@ import {
   Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp
 } from 'lucide-react';
 
-// --- 背景画像の定数 (青系のジム画像) ---
+// --- 背景画像の定数 ---
 const BACKGROUND_IMAGE = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2564&auto=format&fit=crop";
 
 // --- 型定義 ---
@@ -265,7 +265,6 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
         </span>
       </div>
       <div className="flex items-center gap-4">
-        {/* スライダー */}
         <div className="relative h-6 flex-1 flex items-center">
           <input
             type="range"
@@ -278,7 +277,6 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
           />
         </div>
         
-        {/* 手打ち入力エリア */}
         <div className="flex items-center bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 w-24 focus-within:border-blue-500 transition-colors">
           <input
             type="number"
@@ -296,7 +294,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: 疲労度グラフ (SVG) ---
+// --- コンポーネント: 疲労度グラフ (SVG: Y軸数値 & 過去30日固定) ---
 const FatigueChart = ({ history }: { history: LogData[] }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -314,16 +312,36 @@ const FatigueChart = ({ history }: { history: LogData[] }) => {
 
   const currentCategory = categories[currentIndex];
 
-  const chartData = history
-    .filter(log => log.items.some(item => item.name === currentCategory))
-    .map(log => {
+  // 過去30日分の日付配列を生成
+  const daysToShow = 30;
+  const today = new Date();
+  const dateArray = Array.from({ length: daysToShow }, (_, i) => {
+    const d = new Date();
+    d.setDate(today.getDate() - (daysToShow - 1 - i));
+    return d;
+  });
+
+  // グラフ用データの構築（過去30日分、データがない日はnull）
+  const chartPoints = dateArray.map(date => {
+    // ログの日付形式 "YYYY/MM/DD(曜日)" と一致するかチェック
+    const dateStr = date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    
+    // historyの中から、この日付で始まり、かつ該当種目のデータがあるものを探す
+    const log = history.find(l => l.date.startsWith(dateStr));
+    let fatigue: number | null = null;
+    
+    if (log) {
       const item = log.items.find(i => i.name === currentCategory);
-      return {
-        date: log.date.split('(')[0].slice(5),
-        fatigue: item?.fatigue || 0
-      };
-    })
-    .reverse();
+      if (item && item.fatigue) {
+        fatigue = item.fatigue;
+      }
+    }
+
+    return {
+      date: date.getDate().toString(), // X軸ラベル用
+      fatigue: fatigue
+    };
+  });
 
   const handlePrev = () => {
     setCurrentIndex(prev => (prev - 1 + categories.length) % categories.length);
@@ -333,10 +351,21 @@ const FatigueChart = ({ history }: { history: LogData[] }) => {
     setCurrentIndex(prev => (prev + 1) % categories.length);
   };
 
+  // グラフ描画定数
   const width = 100;
   const height = 50;
-  const points = chartData.map((d, i) => {
-    const x = (i / (chartData.length - 1 || 1)) * width;
+  const paddingLeft = 10; // Y軸数値用の左スペース
+  const graphWidth = width - paddingLeft;
+
+  // 折れ線（データがある点のみをつなぐ）
+  // 連続していない場合は線を途切れさせるか繋ぐかですが、
+  // ここでは「データがある点だけを抽出してpolylineにする」ことで点同士を結びます
+  const validPoints = chartPoints
+    .map((d, i) => ({ ...d, index: i }))
+    .filter(d => d.fatigue !== null) as { date: string; fatigue: number; index: number }[];
+
+  const polylinePoints = validPoints.map(d => {
+    const x = paddingLeft + (d.index / (daysToShow - 1)) * graphWidth;
     const y = height - ((d.fatigue / 10) * height);
     return `${x},${y}`;
   }).join(' ');
@@ -356,39 +385,51 @@ const FatigueChart = ({ history }: { history: LogData[] }) => {
         </button>
       </div>
 
-      <div className="h-32 w-full relative bg-neutral-900/50 rounded-xl border border-neutral-800 overflow-hidden">
-        {chartData.length > 1 ? (
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full p-2" preserveAspectRatio="none">
-            <line x1="0" y1="0" x2="100" y2="0" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
-            <line x1="0" y1="25" x2="100" y2="25" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
-            <line x1="0" y1="50" x2="100" y2="50" stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+      <div className="h-32 w-full relative bg-neutral-900/50 rounded-xl border border-neutral-800 overflow-hidden flex">
+        {/* Y軸数値 (常時表示) */}
+        <div className="w-6 flex flex-col justify-between items-end pr-1 py-2 text-[8px] text-neutral-500 font-mono h-full border-r border-neutral-800/50">
+          <span>10</span>
+          <span>5</span>
+          <span>1</span>
+        </div>
+
+        {/* グラフ描画エリア */}
+        <div className="flex-1 relative">
+          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full p-2 pr-0" preserveAspectRatio="none">
+            {/* ガイドライン */}
+            <line x1="0" y1="0" x2="100" y2="0" stroke="#333" strokeWidth="0.2" strokeDasharray="2" />
+            <line x1="0" y1="25" x2="100" y2="25" stroke="#333" strokeWidth="0.2" strokeDasharray="2" />
+            <line x1="0" y1="50" x2="100" y2="50" stroke="#333" strokeWidth="0.2" strokeDasharray="2" />
             
-            <polyline
-              points={points}
-              fill="none"
-              stroke="#3b82f6"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {chartData.map((d, i) => {
-              const x = (i / (chartData.length - 1 || 1)) * width;
+            {/* 折れ線 */}
+            {validPoints.length > 1 && (
+              <polyline
+                points={polylinePoints}
+                fill="none"
+                stroke="#3b82f6"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+
+            {/* 点 */}
+            {validPoints.map((d, i) => {
+              const x = (d.index / (daysToShow - 1)) * 100; // SVG座標系でのX (0-100)
               const y = height - ((d.fatigue / 10) * height);
               return (
-                <circle key={i} cx={x} cy={y} r="3" fill="#1e40af" stroke="white" strokeWidth="1" />
+                <circle key={i} cx={x} cy={y} r="2" fill="#1e40af" stroke="white" strokeWidth="0.5" />
               );
             })}
           </svg>
-        ) : (
-          <div className="flex items-center justify-center h-full text-xs text-neutral-600">
-            データ不足（2回以上の記録が必要です）
-          </div>
-        )}
+        </div>
       </div>
       
-      <div className="flex justify-between text-[9px] text-neutral-500 px-2">
-        <span>{chartData[0]?.date}</span>
-        <span>{chartData[chartData.length - 1]?.date}</span>
+      {/* X軸ラベル (最初と最後の日付) */}
+      <div className="flex justify-between text-[9px] text-neutral-500 px-8">
+        <span>{chartPoints[0]?.date}日</span>
+        <span className="text-neutral-700 mx-2">Past 30 Days</span>
+        <span>{chartPoints[chartPoints.length - 1]?.date}日</span>
       </div>
     </div>
   );
@@ -666,6 +707,7 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
               `}
             >
               <div className="absolute inset-0 z-0 overflow-hidden rounded-3xl">
+                {/* 背景: 画像をやめて赤黒グラデーションに統一 */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-950 via-neutral-950 to-black" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-600/20 via-transparent to-transparent opacity-70" />
               </div>
@@ -883,6 +925,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('workout'); // 'workout', 'edit', 'history'
   const [history, setHistory] = useState([]);
   const [fatigueData, setFatigueData] = useState<any>({});
+  const [targetFrequency, setTargetFrequency] = useState(3);
 
   // 初期データ構造
   const initialMenu = [
@@ -1091,6 +1134,7 @@ export default function App() {
           onFinish={handleFinishWorkout}
           fatigueData={fatigueData}
           setFatigueData={setFatigueData}
+          targetFrequency={targetFrequency}
         />
       )}
       
@@ -1104,6 +1148,8 @@ export default function App() {
       {activeTab === 'history' && (
         <CalendarView 
           history={history} 
+          targetFrequency={targetFrequency}
+          setTargetFrequency={setTargetFrequency}
         />
       )}
 
