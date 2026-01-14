@@ -294,7 +294,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: 疲労度グラフ (修正版: 月次固定表示・Y軸全表示) ---
+// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・Y軸全表示・グリッド付き) ---
 const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDate: Date }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -320,7 +320,6 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 
   // グラフ用データの構築（その月の全日数分）
   const chartPoints = daysArray.map(day => {
-    // "YYYY/MM/DD" 形式を作成
     const checkDate = new Date(year, month, day);
     const dateStr = checkDate.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
     const log = history.find(l => l.date.startsWith(dateStr));
@@ -348,8 +347,8 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
   };
 
   // グラフ描画定数
-  const height = 150; // SVGの高さ
-  const width = 300;  // SVGの幅
+  const height = 150; 
+  const width = 300;
   const paddingX = 10;
   const paddingY = 10;
   const graphWidth = width - paddingX * 2;
@@ -360,8 +359,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
     .filter(d => d.fatigue !== null)
     .map(d => {
       const x = paddingX + ((d.day - 1) / (daysInMonth - 1)) * graphWidth;
-      // Y軸: 1〜10。 1が一番下、10が一番上になるように計算
-      // (10 - val) / (10 - 1) * height
+      // Y軸: 1〜10。 (10 - val) / (10 - 1) * height
       const y = paddingY + ((10 - (d.fatigue as number)) / 9) * graphHeight;
       return { x, y, val: d.fatigue };
     });
@@ -398,11 +396,11 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
             {[...Array(10)].map((_, i) => {
               const y = paddingY + (i / 9) * graphHeight;
               return (
-                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#333" strokeWidth="0.5" strokeDasharray="2" />
+                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#222" strokeWidth="0.5" />
               );
             })}
             
-            {/* 縦グリッド線 (5日おきくらいに描画) */}
+            {/* 縦グリッド線 (5日おきに描画) */}
             {daysArray.filter(d => d % 5 === 0 || d === 1 || d === daysInMonth).map(day => {
                const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
                return (
@@ -557,7 +555,7 @@ const CalendarView = ({ history }: any) => {
           </div>
         </div>
 
-        {/* グラフエリア (月次固定・全期間・全Y軸表示版) */}
+        {/* グラフエリア */}
         <FatigueChart history={history} currentDate={currentDate} />
 
         {/* リスト表示 */}
@@ -931,6 +929,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('workout'); // 'workout', 'edit', 'history'
   const [history, setHistory] = useState([]);
   const [fatigueData, setFatigueData] = useState<any>({});
+  const [targetFrequency, setTargetFrequency] = useState(3);
 
   // 初期データ構造
   const initialMenu = [
@@ -1139,6 +1138,7 @@ export default function App() {
           onFinish={handleFinishWorkout}
           fatigueData={fatigueData}
           setFatigueData={setFatigueData}
+          targetFrequency={targetFrequency}
         />
       )}
       
@@ -1152,6 +1152,8 @@ export default function App() {
       {activeTab === 'history' && (
         <CalendarView 
           history={history} 
+          targetFrequency={targetFrequency}
+          setTargetFrequency={setTargetFrequency}
         />
       )}
 
