@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // --- 背景画像の定数 (publicフォルダの画像) ---
-const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
+const BACKGROUND_IMAGE = "/Gemini_Generated_Image_m91ni3m91ni3m91n.png";
 
 // --- 型定義 ---
 

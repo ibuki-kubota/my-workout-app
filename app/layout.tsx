@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Blue Workout Log", // 青テーマに合わせてタイトル変更
+  title: "筋トレアプリ", // 青テーマに合わせてタイトル変更
   description: "Personal Training Logger",
   // ▼ ここが重要：アイコンの設定を追加
   icons: {
