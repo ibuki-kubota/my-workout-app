@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // --- 背景画像の定数 (publicフォルダの画像) ---
-const BACKGROUND_IMAGE = "/Gemini_Generated_Image_m91ni3m91ni3m91n.png";
+const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
 
 // --- 型定義 ---
 
@@ -327,7 +327,7 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
   );
 };
 
-// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・1日単位グリッド・数字位置調整) ---
+// --- コンポーネント: 疲労度グラフ (SVG: 月次固定・1日単位グリッド・数字位置調整・末日対応) ---
 const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDate: Date }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -429,7 +429,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
             {[...Array(10)].map((_, i) => {
               const y = paddingY + (i / 9) * graphHeight;
               return (
-                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#222" strokeWidth="0.5" />
+                <line key={i} x1="0" y1={y} x2={width} y2={y} stroke="#222" strokeWidth="0.5" strokeDasharray="2" />
               );
             })}
             
@@ -460,17 +460,28 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
 
             {/* X軸ラベル (SVG内描画) */}
             {daysArray.map(day => {
+              const isLastDay = day === daysInMonth;
+              const isFirstDay = day === 1;
+              const isFiveStep = day % 5 === 0;
+
               // 表示条件: 1日, 5の倍数, 末日
-              if (day !== 1 && day % 5 !== 0 && day !== daysInMonth) return null;
+              if (!isFirstDay && !isLastDay && !isFiveStep) return null;
+              // 末日と重なる直前の5の倍数は非表示にして重なりを防ぐ
+              if (isFiveStep && !isLastDay && (daysInMonth - day) < 2) return null;
               
               const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
+              
+              // テキストの位置調整: 型定義エラー解消のために型アサーションまたは明示的な型を使用
+              let textAnchor: "start" | "middle" | "end" = "middle";
+              if (isFirstDay) textAnchor = "start"; // 左端は左寄せ
+              if (isLastDay) textAnchor = "end";    // 右端は右寄せ
               
               return (
                 <text 
                   key={day} 
                   x={x} 
                   y={height + 15} 
-                  textAnchor="middle" 
+                  textAnchor={textAnchor} 
                   fill="#737373" // text-neutral-500
                   fontSize="10"
                   fontFamily="monospace"
@@ -690,7 +701,29 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
 
   const handleSaveFatigue = (value: number) => {
     if (activeModalId) {
-      setFatigueData((prev: any) => ({ ...prev, [activeModalId]: value }));
+      // まず疲労度を更新
+      const newFatigueData = { ...fatigueData, [activeModalId]: value };
+      setFatigueData(newFatigueData);
+      
+      // 完了したものを下に移動させるソート
+      const sortedWorkouts = [...workouts].sort((a: any, b: any) => {
+        // Aが完了しているか（セット全部OK + 疲労度あり）
+        // ※今回入力した value も考慮するため newFatigueData を使う
+        const aAllSets = a.sets.every((s: any) => s.completed);
+        const aFatigue = newFatigueData[a.id];
+        const isADone = aAllSets && (aFatigue !== undefined);
+
+        // Bが完了しているか
+        const bAllSets = b.sets.every((s: any) => s.completed);
+        const bFatigue = newFatigueData[b.id];
+        const isBDone = bAllSets && (bFatigue !== undefined);
+
+        if (isADone === isBDone) return 0; // 状態が同じなら順序変えない（安定ソート）
+        if (isADone && !isBDone) return 1; // A完了、B未完了なら Aを後ろへ
+        return -1; // A未完了、B完了なら Aを前へ
+      });
+
+      setWorkouts(sortedWorkouts);
       setActiveModalId(null);
     }
   };
@@ -968,6 +1001,7 @@ const EditMenuView = ({ workouts, setWorkouts }: any) => {
               </div>
 
               <div className="bg-neutral-800/30 rounded-2xl p-5 border border-neutral-800 space-y-6">
+                {/* 重量スライダー：ステップを5に設定 */}
                 <SliderInput label="SETTING WEIGHT (全セット共通)" value={currentWeight} unit="kg" min={0} max={200} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'weight', val)} mode="light" />
                 <SliderInput label="SETTING REPS (全セット共通)" value={currentReps} unit="回" min={1} max={30} step={1} onChange={(val: string) => handleBulkChange(workout.id, 'reps', val)} mode="light" />
                 <div className="pt-2 border-t border-neutral-800">
