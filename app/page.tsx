@@ -8,7 +8,7 @@ import {
   Activity, X, ChevronLeft, ChevronRight, Edit3, TrendingUp, AlertTriangle
 } from 'lucide-react';
 
-// --- 背景画像の定数 ---
+// --- 背景画像の定数 (publicフォルダの画像) ---
 const BACKGROUND_IMAGE = "/frantisek-g-XXuVXLy5gHU-unsplash.jpg";
 
 // --- 型定義 ---
@@ -276,9 +276,12 @@ const DeleteButton = ({ onDelete }: any) => {
   );
 };
 
-// --- コンポーネント: スライダー＋数値入力 (1kg単位) ---
+// --- コンポーネント: スライダー＋数値入力 (修正: 0非表示・空入力対応) ---
 const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
-  const numericValue = parseFloat(value) || 0;
+  // 数値化してスライダー用に保持 (空文字や無効値は0とする)
+  // 入力値から単位を取り除いた文字列を取得
+  const rawValue = value ? String(value).replace(unit, '') : '';
+  const sliderValue = rawValue === '' || isNaN(parseFloat(rawValue)) ? 0 : parseFloat(rawValue);
 
   const handleChange = (e: any) => {
     let val = e.target.value;
@@ -287,7 +290,8 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    onChange(`${val}${unit}`);
+    // 空文字の場合は単位もつけずに空として親に渡す
+    onChange(val === '' ? '' : `${val}${unit}`);
   };
 
   return (
@@ -298,26 +302,29 @@ const SliderInput = ({ label, value, onChange, min, max, step, unit }: any) => {
         </span>
       </div>
       <div className="flex items-center gap-4">
+        {/* スライダー */}
         <div className="relative h-6 flex-1 flex items-center">
           <input
             type="range"
             min={min}
             max={max}
             step={step}
-            value={numericValue}
+            value={sliderValue}
             onChange={handleChange}
             className="w-full h-2 rounded-full appearance-none cursor-pointer focus:outline-none focus:ring-2 transition-all border bg-neutral-800 accent-blue-500 focus:ring-blue-500/30 hover:accent-blue-400 border-white/10"
           />
         </div>
         
+        {/* 手打ち入力エリア */}
         <div className="flex items-center bg-neutral-900 border border-neutral-700 rounded-lg px-2 py-1 w-24 focus-within:border-blue-500 transition-colors">
           <input
             type="number"
             min={min}
             max={max}
             step={step}
-            value={numericValue}
+            value={rawValue} // ここで数値変換せず生の文字列(単位なし)を渡す
             onChange={handleNumberChange}
+            placeholder="0"
             className="w-full bg-transparent text-right text-lg font-bold font-mono text-white focus:outline-none"
           />
           <span className="text-xs ml-1 text-neutral-500">{unit}</span>
@@ -471,7 +478,7 @@ const FatigueChart = ({ history, currentDate }: { history: LogData[], currentDat
               
               const x = paddingX + ((day - 1) / (daysInMonth - 1)) * graphWidth;
               
-              // テキストの位置調整: 型定義エラー解消のために型アサーションまたは明示的な型を使用
+              // テキストの位置調整: 型アサーション
               let textAnchor: "start" | "middle" | "end" = "middle";
               if (isFirstDay) textAnchor = "start"; // 左端は左寄せ
               if (isLastDay) textAnchor = "end";    // 右端は右寄せ
@@ -701,24 +708,41 @@ const WorkoutView = ({ workouts, setWorkouts, onFinish, fatigueData, setFatigueD
 
   const handleSaveFatigue = (value: number) => {
     if (activeModalId) {
-      // まず疲労度を更新
       const newFatigueData = { ...fatigueData, [activeModalId]: value };
       setFatigueData(newFatigueData);
       
-      // 完了済み(全セットOK + 疲労度あり)を後ろへ移動
-      const sortedWorkouts = [...workouts].sort((a: any, b: any) => {
-        const aAllSets = a.sets.every((s: any) => s.completed);
-        const aFatigue = newFatigueData[a.id];
-        const isADone = aAllSets && (aFatigue !== undefined);
+      // 完了済み判定: (全セットOK かつ 疲労度入力済み)
+      // リスト再構築ロジック:
+      // 「全てのワークアウトが完了」したら、ID順（初期順序）に戻す
+      // そうでなければ、未完了を上、完了を下にする
 
-        const bAllSets = b.sets.every((s: any) => s.completed);
-        const bFatigue = newFatigueData[b.id];
-        const isBDone = bAllSets && (bFatigue !== undefined);
-
-        if (isADone === isBDone) return 0;
-        if (isADone && !isBDone) return 1;
-        return -1;
+      const isAllWorkoutsDone = workouts.every((w: any) => {
+        const allSetsDone = w.sets.every((s: any) => s.completed);
+        const fatigueDone = newFatigueData[w.id] !== undefined;
+        return allSetsDone && fatigueDone;
       });
+
+      let sortedWorkouts = [...workouts];
+
+      if (isAllWorkoutsDone) {
+        // 全て完了したらID順（初期順序）に戻す
+        sortedWorkouts.sort((a: any, b: any) => a.id - b.id);
+      } else {
+        // 完了済みを後ろへ移動
+        sortedWorkouts.sort((a: any, b: any) => {
+          const aAllSets = a.sets.every((s: any) => s.completed);
+          const aFatigue = newFatigueData[a.id];
+          const isADone = aAllSets && (aFatigue !== undefined);
+
+          const bAllSets = b.sets.every((s: any) => s.completed);
+          const bFatigue = newFatigueData[b.id];
+          const isBDone = bAllSets && (bFatigue !== undefined);
+
+          if (isADone === isBDone) return a.id - b.id; // 同じ状態ならID順
+          if (isADone && !isBDone) return 1;
+          return -1;
+        });
+      }
 
       setWorkouts(sortedWorkouts);
       setActiveModalId(null);
@@ -1211,6 +1235,8 @@ export default function App() {
       setActiveTab('history');
     } catch (e) {
       console.error('Error saving workout:', e);
+      // ここでエラーアラートを出すかは任意だが、モーダルシステム的にはToastなどが望ましい
+      // 今回はシンプルにログ出力のみとする
     }
   };
 
