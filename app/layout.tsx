@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "筋トレアプリ", // 青テーマに合わせてタイトル変更
+  title: "my-workout", // 青テーマに合わせてタイトル変更
   description: "Personal Training Logger",
   // ▼ ここが重要：アイコンの設定を追加
   icons: {
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Workout",
+    title: "my-workout",
   },
 };
 
